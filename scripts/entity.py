@@ -5,7 +5,7 @@ from scripts.animation import *
 ''' Character States '''
 
 class CharacterState():
-    def __init__(self, character, character_name):
+    def __init__(self, character):
         self.character = character
 
     def update(self):
@@ -15,18 +15,18 @@ class CharacterState():
             self.character.image = pygame.transform.flip(self.character.image, True, False)
 
 class Idle(CharacterState):
-    def __init__(self, character, character_name):
-        super().__init__(character, character_name)
-        self.animation = Animation(f"{character_name}_idle.png", 32, 32, 0.1)
+    def __init__(self, character, animation_path):
+        super().__init__(character)
+        self.animation = Animation(animation_path, 32, 32, 0.1)
 
     def determine_state(self):
         if self.character.direction.magnitude() != 0:
             self.character.change_state(self.character.run_state)
 
 class Run(CharacterState):
-    def __init__(self, character, character_name):
-        super().__init__(character, character_name)
-        self.animation = Animation(f"{character_name}_run.png", 32, 32, 0.1)
+    def __init__(self, character, animation_path):
+        super().__init__(character)
+        self.animation = Animation(animation_path, 32, 32, 0.1)
 
     def determine_state(self):
         if self.character.direction.magnitude() == 0:
@@ -38,12 +38,10 @@ class Run(CharacterState):
 ''' Entities '''
 
 class Bunny():
-    def __init__(self):
-        self.name = "orb_bunny"
-
+    def __init__(self, name):
         ''' States '''
-        self.idle_state = Idle(self, self.name)
-        self.run_state = Run(self, self.name)
+        self.idle_state = Idle(self, f"bunny/{name}/{name}_idle.png")
+        self.run_state = Run(self, f"bunny/{name}/{name}_run.png")
 
         self.state = self.idle_state
 
@@ -55,7 +53,7 @@ class Bunny():
         self.x_direction = 1 # 1 for facing right, -1 for facing left
 
         ''' Hitbox '''
-        self.collision_box_x_offset, self.collision_box_y_offset, hitbox_width, hitbox_height = get_box(f"box/collision_box/entities/{self.name}_collision_box.png")
+        self.collision_box_x_offset, self.collision_box_y_offset, hitbox_width, hitbox_height = get_box(f"box/collision_box/entities/{name}_collision_box.png")
         self.collision_box = pygame.FRect(MID_X, MID_Y, hitbox_width, hitbox_height) # placeholder for start_x, start_y
 
         ''' Keyboard Controls '''
@@ -128,7 +126,7 @@ class Bunny():
         self.y = self.collision_box.top - self.collision_box_y_offset
 
         # determine animation direction with mouse position
-        if mouse_pos.x < self.x:
+        if mouse_pos.x < MID_X:
             self.x_direction = -1
         else:
             self.x_direction = 1
@@ -157,9 +155,9 @@ class Bunny():
 
 class OrbBunny(Bunny):
     def __init__(self):
-        super().__init__()
+        super().__init__("orb_bunny")
 
-        self.hand_sprites = load_spritesheet(load_image("angled_hands.png"), 32, 32)
+        self.hand_sprites = load_spritesheet(load_image("bunny/orb_bunny/angled_hands.png"), 32, 32)
         self.hand_angles = [90, 60, 30, 0, -15, -45, -75, -90]
 
         self.hand_images = {}
@@ -214,3 +212,11 @@ class OrbBunny(Bunny):
         super().display(screen, offset_x, offset_y)
 
         screen.blit(self.hand_image, (int(self.x + 4 * self.x_direction) + offset_x, int(self.y + self.hand_y_offset) + offset_y))
+
+class NatureBunny(Bunny):
+    def __init__(self):
+        super().__init__("nature_bunny")
+
+class ShadowBunny(Bunny):
+    def __init__(self):
+        super().__init__("shadow_bunny")

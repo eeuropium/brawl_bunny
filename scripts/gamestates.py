@@ -3,6 +3,7 @@ from scripts.core_funcs import *
 from scripts.entity import *
 from scripts.map import Map
 from scripts.camera import Camera
+from scripts.shader import Shader
 
 class GameState():
     def __init__(self, game):
@@ -20,6 +21,7 @@ class GameState():
         pass
 
     def run_state(self):
+        self.shader = Shader()
 
         while self.run:
             ''' fill screen with background colour '''
@@ -63,11 +65,15 @@ class GameState():
             self.process()
 
             ''' display and updates '''
+            self.shader.apply_shader(self.screen)
 
-            # display scaled up screen on user screen
-            self.game.display_screen.blit(pygame.transform.scale(self.screen, self.game.display_screen.get_size()), (0, 0))
+            # shader now scales and displays the surface so this is not needed
+            # self.game.display_screen.blit(pygame.transform.scale(self.screen, self.game.display_screen.get_size()), (0, 0))
 
-            pygame.display.update()
+            pygame.display.flip()
+
+            self.shader.release_memory()
+
             self.game.clock.tick(FPS)
 
 
@@ -79,7 +85,7 @@ class Gameplay(GameState):
         self.map = Map("map2.json")
         self.camera = Camera(self.map.map_surf)
 
-        self.player = OrbBunny()
+        self.player = ShadowBunny()
 
     def process(self):
         ''' initialise '''
@@ -95,7 +101,7 @@ class Gameplay(GameState):
         self.camera.add_visible_sprites(objects)
 
         ''' display '''
-        self.camera.display_sprites(self.screen, int(self.player.x), int(self.player.y))
+        self.camera.display_sprites(self.screen, int(self.player.x + 16), int(self.player.y + 16))
 
 class TestMap(GameState):
     def __init__(self, game):

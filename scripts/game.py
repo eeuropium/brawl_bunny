@@ -9,33 +9,33 @@ class Game():
 
         self.WINDOW_SIZE = (DISPLAY_WIDTH, DISPLAY_HEIGHT) # scaled up window size
 
-        self.display_flags = pygame.FULLSCREEN
+        # set display flags - FULLSCREEN to allow toggling between fullscreen and OPENFL and DOUBLEBUF for shaders
+        self.display_flags = pygame.FULLSCREEN | pygame.OPENGL | pygame.DOUBLEBUF
 
+        # to enable shader version https://stackoverflow.com/questions/76151435/creating-a-context-utilizing-moderngl-for-pygame
+        pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 3)
+        pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MINOR_VERSION, 3)
+        pygame.display.gl_set_attribute(pygame.GL_CONTEXT_PROFILE_MASK, pygame.GL_CONTEXT_PROFILE_CORE)
+        pygame.display.gl_set_attribute(pygame.GL_CONTEXT_FORWARD_COMPATIBLE_FLAG, True)
+
+        # set up display screen (final one)
         self.display_screen = pygame.display.set_mode(self.WINDOW_SIZE, self.display_flags)
         # display screen - mathces user device display size
 
-        SCALE_RATIO = 40
-        self.screen = pygame.Surface((16 * SCALE_RATIO, 9 * SCALE_RATIO)) # (640, 360)
+        # SCALE_RATIO = 40
+        self.screen = pygame.Surface((WIDTH, HEIGHT)) # (640, 360)
 
         self.clock = pygame.time.Clock()
 
         pygame.display.set_caption("NEA prototype")
 
     def toggle_screen(self):
-        self.display_flags ^= pygame.FULLSCREEN
+        self.display_flags ^= pygame.FULLSCREEN # XOR to change pygame.FULLSCREEN to NOT pygame.FULLSCREEN
         self.display_screen = pygame.display.set_mode(self.WINDOW_SIZE, self.display_flags)
 
     def run_game(self):
         state1 = Gameplay(self)
         state1.run_state()
-#
-# git init
-# git remote add origin https://github.com/eeuropium/bunny_game.git
-# git add .
-# git commit -m "commit 1"
-# git push --set-upstream origin master
-
-
 
 def run_game():
     game = Game()
