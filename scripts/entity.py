@@ -47,6 +47,12 @@ class Run(CharacterState):
     def update(self):
         super().update()
 
+''' Hand State '''
+
+
+
+''' Layer '''
+
 class Layer():
     def __init__(self):
         pass
@@ -97,6 +103,7 @@ class Bunny():
         self.name = name
 
         ''' States '''
+        # character (body)
         self.idle_state = Idle(self, f"bunny/{self.name}/{self.name}_idle.png")
         self.run_state = Run(self, f"bunny/{self.name}/{self.name}_run.png")
 
@@ -133,6 +140,10 @@ class Bunny():
     def change_state(self, state):
         self.state = state
         self.state.animation.reset()
+
+    def change_hand_state(self, hand_state):
+        self.hand_state = hand_state
+        self.hand_state.animation.reset()
 
     def update(self, inputs, map_obj_collision_boxes):
 
@@ -196,17 +207,19 @@ class Bunny():
         # check if have to change from current state to new state
         self.state.determine_state()
 
-        # set character_layer image
-        self.character_layer.update(self.state.animation.get_frame(), self.x_direction)
+        # updates image and direction
+        self.state.update()
 
     def get_display_coords(self, offset_x, offset_y):
         return (int(self.x) + offset_x, int(self.y) + offset_y)
 
     def display(self, screen, offset_x, offset_y):
+
         # calculate the display coordinates
         display_x, display_y = self.get_display_coords(offset_x, offset_y)
 
-        self.character_layer.display(screen, display_x, display_y)
+        # display character
+        screen.blit(self.image, (display_x, display_y))
 
         # for box in self.debug:
         #     pygame.draw.rect(screen, (255, 0, 0), (box.left + offset_x, box.top + offset_y, box.width, box.height))
