@@ -35,9 +35,6 @@ class GameState():
             self.last_time = time.time()
 
             ''' get inputs '''
-            self.events = pygame.event.get()
-            self.keys = pygame.key.get_pressed()
-
             # convert mouse_pos from tuple to vector2
             self.mouse_pos = pygame.mouse.get_pos()
             self.mouse_pos = pygame.math.Vector2(self.mouse_pos)
@@ -46,13 +43,20 @@ class GameState():
             self.mouse_pos.x = round(self.mouse_pos.x * WIDTH / DISPLAY_WIDTH)
             self.mouse_pos.y = round(self.mouse_pos.y * HEIGHT / DISPLAY_HEIGHT)
 
+            # place all inputs into a dictionary for better scalability (if new inputs need to be added itf)
+            self.inputs = {}
+            self.inputs["dt"] = self.dt
+            self.inputs["keys"] = pygame.key.get_pressed()
+            self.inputs["events"] = pygame.event.get()
+            self.inputs["mouse_pos"] = self.mouse_pos
+
             ''' handle quitting '''
 
-            if self.keys[pygame.K_ESCAPE]:
+            if self.inputs["keys"][pygame.K_ESCAPE]:
                 pygame.quit()
                 sys.exit()
 
-            for event in self.events:
+            for event in self.inputs["events"]:
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
@@ -90,11 +94,11 @@ class Gameplay(GameState):
     def process(self):
         ''' initialise '''
         self.camera.clear_visible_sprites()
-        collision_boxes =  self.map.get_neighbouring_chunk_data(self.player.x, self.player.y, "collision_boxes")
+        map_obj_collision_boxes =  self.map.get_neighbouring_chunk_data(self.player.x, self.player.y, "map_obj_collision_boxes")
         objects = self.map.get_neighbouring_chunk_data(self.player.x, self.player.y, "objects")
 
         ''' updates '''
-        self.player.update(self.keys, self.mouse_pos, collision_boxes, self.dt)
+        self.player.update(self.inputs, map_obj_collision_boxes)
 
         self.camera.add_visible_sprite(self.player)
 

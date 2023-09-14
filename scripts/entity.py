@@ -14,10 +14,13 @@ class CharacterState():
         if self.character.x_direction == -1:
             self.character.image = pygame.transform.flip(self.character.image, True, False)
 
+    def get_y_offsets(self):
+        return None
+
 class Idle(CharacterState):
     def __init__(self, character, animation_path):
         super().__init__(character)
-        self.animation = Animation(animation_path, 32, 32, 0.1)
+        self.animation = Animation(animation_path, 32, 32)
 
     def determine_state(self):
         if self.character.direction.magnitude() != 0:
@@ -26,24 +29,81 @@ class Idle(CharacterState):
 class Run(CharacterState):
     def __init__(self, character, animation_path):
         super().__init__(character)
-        self.animation = Animation(animation_path, 32, 32, 0.1)
+        self.animation = Animation(animation_path, 32, 32)
 
     def determine_state(self):
         if self.character.direction.magnitude() == 0:
             self.character.change_state(self.character.idle_state)
 
+    def set_y_offsets(self, y_offsets):
+        self.y_offsets = y_offsets
+
+    def get_y_offsets(self):
+        if self.y_offsets:
+            return self.y_offsets
+        else:
+            return None
+
     def update(self):
         super().update()
+
+class Layer():
+    def __init__(self):
+        pass
+
+    def update(self, image, x_direction):
+        self.image = image
+
+        if x_direction == -1:
+            self.image = pygame.transform.flip(self.image, True, False)
+
+    def display(self, screen, display_x, display_y):
+        screen.blit(self.image, (display_x, display_y))
+
+
+class ChangingLayer(Layer):
+    def __init__(self, base_offset_x = 0, base_offset_y = 0, left_offset_x = 0, right_offset_x = 0):
+        # constant values
+        self.base_offset_x = base_offset_x
+        self.base_offset_y = base_offset_y
+        self.left_offset_x = left_offset_x
+        self.right_offset_x = right_offset_x
+
+        # depends on state
+        self.y_offset = 0
+        self.x_offset = 0
+
+    def update(self, image, x_direction, state):
+        super().update(image, x_direction)
+
+        # calculate x offset
+        self.x_offset = self.base_offset_x * x_direction + (x_direction == -1) * self.left_offset_x + (x_direction == 1) * self.right_offset_x
+
+        # calculate y offset
+        self.y_offset = self.base_offset_y
+
+        y_offsets = state.get_y_offsets()
+
+        if y_offsets:
+            self.y_offset -= y_offsets[state.animation.get_frame_index()]
+
+    def display(self, screen, display_x, display_y):
+        screen.blit(self.image, (display_x + self.x_offset, display_y + self.y_offset))
 
 ''' Entities '''
 
 class Bunny():
     def __init__(self, name):
+        self.name = name
+
         ''' States '''
-        self.idle_state = Idle(self, f"bunny/{name}/{name}_idle.png")
-        self.run_state = Run(self, f"bunny/{name}/{name}_run.png")
+        self.idle_state = Idle(self, f"bunny/{self.name}/{self.name}_idle.png")
+        self.run_state = Run(self, f"bunny/{self.name}/{self.name}_run.png")
 
         self.state = self.idle_state
+
+        ''' Image '''
+        self.character_layer = Layer()
 
         ''' Movement '''
         self.SPEED = 1.5
@@ -74,36 +134,36 @@ class Bunny():
         self.state = state
         self.state.animation.reset()
 
-    # def check_collision(self, )
-    def update(self, keys, mouse_pos, collision_boxes, dt):
+    def update(self, inputs, map_obj_collision_boxes):
+
         ''' Movement '''
 
         # similar to legend of zelda youtube tutorial
 
         # update direction vector based on inputs
-        if keys[self.controls["left"]]:
+        if inputs["keys"][self.controls["left"]]:
             self.direction.x = -1
-        elif keys[self.controls["right"]]:
+        elif inputs["keys"][self.controls["right"]]:
             self.direction.x = 1
         else:
             self.direction.x = 0
 
-        if keys[self.controls["up"]]:
+        if inputs["keys"][self.controls["up"]]:
             self.direction.y = -1
-        elif keys[self.controls["down"]]:
+        elif inputs["keys"][self.controls["down"]]:
             self.direction.y = 1
         else:
             self.direction.y = 0
 
         # normalize so that speed is constant even when travelling diagonally
         if self.direction.magnitude() != 0:
-            self.direction = self.direction.normalize() * self.SPEED * dt
+            self.direction = self.direction.normalize() * self.SPEED * inputs["dt"]
 
         # update x coordinate
         self.collision_box.centerx += self.direction.x
 
         # handle collisions in the x axis
-        for collision_box in collision_boxes:
+        for collision_box in map_obj_collision_boxes:
             if self.collision_box.colliderect(collision_box):
                 if self.direction.x > 0: # moving right
                     self.collision_box.right = collision_box.left
@@ -114,7 +174,7 @@ class Bunny():
         self.collision_box.centery += self.direction.y
 
         # handle collisions in the y axis
-        for collision_box in collision_boxes:
+        for collision_box in map_obj_collision_boxes:
             if self.collision_box.colliderect(collision_box):
                 if self.direction.y > 0: # moving down
                     self.collision_box.bottom = collision_box.top
@@ -126,21 +186,27 @@ class Bunny():
         self.y = self.collision_box.top - self.collision_box_y_offset
 
         # determine animation direction with mouse position
-        if mouse_pos.x < MID_X:
+        if inputs["mouse_pos"].x < MID_X:
             self.x_direction = -1
         else:
             self.x_direction = 1
 
         ''' Animation '''
 
+        # check if have to change from current state to new state
         self.state.determine_state()
-        self.state.update()
 
-        # self.debug = collision_boxes
+        # set character_layer image
+        self.character_layer.update(self.state.animation.get_frame(), self.x_direction)
 
+    def get_display_coords(self, offset_x, offset_y):
+        return (int(self.x) + offset_x, int(self.y) + offset_y)
 
     def display(self, screen, offset_x, offset_y):
-        screen.blit(self.image, (int(self.x) + offset_x, int(self.y) + offset_y))
+        # calculate the display coordinates
+        display_x, display_y = self.get_display_coords(offset_x, offset_y)
+
+        self.character_layer.display(screen, display_x, display_y)
 
         # for box in self.debug:
         #     pygame.draw.rect(screen, (255, 0, 0), (box.left + offset_x, box.top + offset_y, box.width, box.height))
@@ -157,14 +223,18 @@ class OrbBunny(Bunny):
     def __init__(self):
         super().__init__("orb_bunny")
 
-        self.hand_sprites = load_spritesheet(load_image("bunny/orb_bunny/angled_hands.png"), 32, 32)
+        ''' Hand '''
+        self.hand_sprites = load_spritesheet(load_image(f"bunny/{self.name}/{self.name}_hands.png"), 32, 32)
         self.hand_angles = [90, 60, 30, 0, -15, -45, -75, -90]
 
         self.hand_images = {}
-        self.walk_y_offsets = [0, 1, 3, 1, 0, 1, 3, 1]
 
         for index, angle in enumerate(self.hand_angles):
             self.hand_images[angle] = self.hand_sprites[index]
+
+        self.hand_layer = ChangingLayer(4, 5)
+
+        self.run_state.set_y_offsets([0, 1, 3, 1, 0, 1, 3, 1])
 
 
     def find_closest_angle(self, angle, available_angles):
@@ -179,44 +249,125 @@ class OrbBunny(Bunny):
 
         return closest_angle
 
-
-    def update(self, keys, mouse_pos, objects, dt):
-        super().update(keys, mouse_pos, objects, dt)
+    def update(self, inputs, map_obj_collision_boxes):
+        super().update(inputs, map_obj_collision_boxes)
 
         # calculate angle in radians
-        rotate_angle = math.atan2(self.y - mouse_pos.y, abs(mouse_pos.x - self.x))
+        rotate_angle = math.atan2(MID_Y - inputs["mouse_pos"].y, abs(inputs["mouse_pos"].x - MID_X))
         # self.y - mouse_pos.y as the y-axis of pygame's coordinate system is different from cartesian system
         # abs makes sure that even when image is flipped we still get the correct angles
 
         # convert to degree
         rotate_angle = math.degrees(rotate_angle)
 
-        # get angled_hand image
+        # best angle calculations
         best_angle = self.find_closest_angle(rotate_angle, self.hand_angles)
-        self.hand_image = self.hand_images[best_angle]
-
-        # flip hand if facing left
-
-        if self.x_direction == -1:
-            self.hand_image = pygame.transform.flip(self.hand_image, True, False)
-
-        # set y offset for hand
-        self.hand_y_offset = 5
-
-        if self.state == self.run_state:
-            frame_index = self.state.animation.get_frame_index()
-            self.hand_y_offset -= self.walk_y_offsets[frame_index]
+        self.hand_layer.update(self.hand_images[best_angle], self.x_direction, self.state)
 
 
     def display(self, screen, offset_x, offset_y):
+        display_x, display_y = self.get_display_coords(offset_x, offset_y)
+
+        # display body
         super().display(screen, offset_x, offset_y)
 
-        screen.blit(self.hand_image, (int(self.x + 4 * self.x_direction) + offset_x, int(self.y + self.hand_y_offset) + offset_y))
+        # display hand
+        self.hand_layer.display(screen, display_x, display_y)
 
 class NatureBunny(Bunny):
     def __init__(self):
         super().__init__("nature_bunny")
 
+class AngelBunny(Bunny):
+    def __init__(self):
+        super().__init__("angel_bunny")
+
+        ''' Hand '''
+        self.hand_layer = ChangingLayer()
+
+        self.hand_state = "idle"
+
+        self.hand_animations = {
+        "idle" : Animation(f"bunny/{self.name}/{self.name}_idle_hands.png", 32, 32),
+        "run": Animation(f"bunny/{self.name}/{self.name}_run_hands.png", 32, 32)
+        }
+
+        self.idle_hand_animation = Animation(f"bunny/{self.name}/{self.name}_idle_hands.png", 32, 32)
+        self.run_hand_animation = Animation(f"bunny/{self.name}/{self.name}_run_hands.png", 32, 32)
+        self.charge_hand_animation = Animation(f"bunny/{self.name}/{self.name}_charge_hands.png", 32, 32)
+        self.release_hand_animation = Animation(f"bunny/{self.name}/{self.name}_release_hands.png", 32, 32)
+
+        self.transitions = {"idle" : {"run" : "self.hand_idle_to_run()"},
+                            "run": {"idle" : "self.hand_run_to_idle()"}
+                            }
+
+        self.run_state.set_y_offsets([0, 1, 2, 1, 0, 1, 2, 1])
+
+    def hand_idle_to_run(self):
+        return self.state == self.run_state
+
+    def hand_run_to_idle(self):
+        return self.state == self.idle_state
+
+    def update(self, inputs, map_obj_collision_boxes):
+        # super().update(inputs, map_obj_collision_boxes)
+
+        for new_state, condition_function in self.transitions[self.hand_state].items():
+            if eval(condition_function):
+                self.hand_state = new_state
+
+        self.hand_layer.update(self.hand_animations[self.hand_state].get_frame(), self.x_direction, self.state)
+
+        super().update(inputs, map_obj_collision_boxes)
+
+    def display(self, screen, offset_x, offset_y):
+        display_x, display_y = self.get_display_coords(offset_x, offset_y)
+
+        # display body
+        super().display(screen, offset_x, offset_y)
+
+        # display hand
+        self.hand_layer.display(screen, display_x, display_y)
+
 class ShadowBunny(Bunny):
     def __init__(self):
         super().__init__("shadow_bunny")
+
+        ''' Sword '''
+        self.sword_layer = ChangingLayer(0, 0, -32, 0)
+        self.sword_animation = SingleAnimation(f"bunny/{self.name}/{self.name}_sword.png", 64, 32)
+        self.playing_sword_animation = False
+
+        self.run_state.set_y_offsets([0, 1, 3, 1, 0, 1, 3, 1])
+
+    def update(self, inputs, map_obj_collision_boxes):
+        super().update(inputs, map_obj_collision_boxes)
+
+        ''' Updating Sword Animation '''
+
+        # only check if not currently playing animation
+        if not self.playing_sword_animation:
+            self.sword_layer.update(self.sword_animation.get_first_frame(), self.x_direction, self.state)
+
+            # check for input to start animation
+            for event in inputs["events"]:
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    self.playing_sword_animation = True
+                    self.sword_animation.start()
+        else:
+            self.sword_layer.update(self.sword_animation.get_frame(), self.x_direction, self.state)
+
+            if self.sword_animation.ended():
+                self.playing_sword_animation = False
+
+        self.sword_image = self.sword_animation.get_frame()
+
+
+    def display(self, screen, offset_x, offset_y):
+        display_x, display_y = self.get_display_coords(offset_x, offset_y)
+
+        # display body
+        super().display(screen, offset_x, offset_y)
+
+        # display sword (and attached hand)
+        self.sword_layer.display(screen, display_x, display_y)

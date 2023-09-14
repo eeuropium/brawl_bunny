@@ -89,7 +89,7 @@ class Map:
         for x in range(-1, (columns // CHUNK_SIZE) + 1): # -1 to account for objects which may be partly offscreen
             for y in range(-1, (rows // CHUNK_SIZE) + 1): # +1 to account for rounding down division
                 chunks[(x, y)] = {"objects": [],
-                                  "collision_boxes": []}
+                                  "map_obj_collision_boxes": []}
 
         for layer in layers:
             if layer["type"] == "tilelayer":
@@ -113,7 +113,7 @@ class Map:
 
                         if tile_id in [1, 3, 4, 5, 17, 19, 33, 34, 35]:
                             chunk_x, chunk_y = calc_chunk_xy(x, y)
-                            chunks[(chunk_x, chunk_y)]["collision_boxes"].append(pygame.Rect(x, y, TILE_SIZE, TILE_SIZE))
+                            chunks[(chunk_x, chunk_y)]["map_obj_collision_boxes"].append(pygame.Rect(x, y, TILE_SIZE, TILE_SIZE))
 
                         map_surf.blit(tile_surf, (x, y))
 
@@ -139,7 +139,7 @@ class Map:
                     # add object to corresponding chunk
                     chunk_x, chunk_y = calc_chunk_xy(x, y)
                     chunks[(chunk_x, chunk_y)]["objects"].append(object)
-                    chunks[(chunk_x, chunk_y)]["collision_boxes"].append(object.collision_box)
+                    chunks[(chunk_x, chunk_y)]["map_obj_collision_boxes"].append(object.collision_box)
 
         return map_surf, chunks
 
