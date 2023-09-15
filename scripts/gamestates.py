@@ -4,6 +4,7 @@ from scripts.entity import *
 from scripts.map import Map
 from scripts.camera import Camera
 from scripts.shader import Shader
+from scripts.selection import *
 
 class GameState():
     def __init__(self, game):
@@ -79,6 +80,21 @@ class GameState():
             self.shader.release_memory()
 
             self.game.clock.tick(FPS)
+
+class CharacterSelection(GameState):
+    def __init__(self, game):
+        super().__init__(game)
+        self.background_colour = BLACK
+
+        self.cards = Cards(["orb_bunny", "nature_bunny", "angel_bunny", "shadow_bunny"])
+
+    def process(self):
+        ''' update '''
+        self.cards.update(self.mouse_pos)
+
+        ''' display '''
+        self.cards.display(self.screen)
+
 
 
 class Gameplay(GameState):

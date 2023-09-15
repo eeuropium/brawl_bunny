@@ -34,7 +34,7 @@ class Game():
         self.display_screen = pygame.display.set_mode(self.WINDOW_SIZE, self.display_flags)
 
     def run_game(self):
-        state1 = Gameplay(self)
+        state1 = CharacterSelection(self)
         state1.run_state()
 
 def run_game():
