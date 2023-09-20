@@ -44,6 +44,9 @@ class GameState():
             self.mouse_pos.x = round(self.mouse_pos.x * WIDTH / DISPLAY_WIDTH)
             self.mouse_pos.y = round(self.mouse_pos.y * HEIGHT / DISPLAY_HEIGHT)
 
+            # self.mouse_pos.x = round(self.mouse_pos.x * WIDTH / pygame.display.Info().current_h)
+            # self.mouse_pos.y = round(self.mouse_pos.y * HEIGHT / pygame.display.Info().current_w)
+
             # place all inputs into a dictionary for better scalability (if new inputs need to be added itf)
             self.inputs = {}
             self.inputs["dt"] = self.dt
@@ -84,17 +87,17 @@ class GameState():
 class CharacterSelection(GameState):
     def __init__(self, game):
         super().__init__(game)
-        self.background_colour = BLACK
+        self.background_colour = WATER_BLUE
 
         self.cards = Cards(["orb_bunny", "nature_bunny", "angel_bunny", "shadow_bunny"])
 
     def process(self):
         ''' update '''
-        self.cards.update(self.mouse_pos)
+        self.cards.update(self.inputs)
 
         ''' display '''
         self.cards.display(self.screen)
-
+        pygame.draw.circle(self.screen, WHITE, self.inputs["mouse_pos"], 2)
 
 
 class Gameplay(GameState):

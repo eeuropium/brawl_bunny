@@ -76,3 +76,17 @@ def get_box(path):
             break
 
     return left, top, width, height
+
+''' colours '''
+
+def palette_swap(org_image, old_colour, new_colour):
+    black_surf = pygame.Surface(org_image.get_size())
+    black_surf.blit(org_image, (0, 0))
+    black_surf.set_colorkey(old_colour)
+
+    final_surf = pygame.Surface(org_image.get_size())
+    final_surf.fill(new_colour)
+    final_surf.blit(black_surf, (0 ,0))
+    final_surf.set_colorkey((0, 0, 0))
+
+    return final_surf
