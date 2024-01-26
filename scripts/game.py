@@ -22,8 +22,8 @@ class Game():
         self.display_screen = pygame.display.set_mode(self.WINDOW_SIZE, self.display_flags)
         # display screen - mathces user device display size
 
-        # SCALE_RATIO = 40
-        self.screen = pygame.Surface((WIDTH, HEIGHT)) # (640, 360)
+        # SCALE_RATIO = 20
+        self.screen = pygame.Surface((WIDTH, HEIGHT)) # 320, 180
 
         self.clock = pygame.time.Clock()
 
@@ -34,8 +34,11 @@ class Game():
         self.display_screen = pygame.display.set_mode(self.WINDOW_SIZE, self.display_flags)
 
     def run_game(self):
-        state1 = CharacterSelection(self)
+        state1 = Menu(self)
         state1.run_state()
+
+        state2 = WaitingScreen(self)
+        state2.run_state()
 
 def run_game():
     game = Game()

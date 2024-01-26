@@ -30,6 +30,17 @@ def display_center(screen, surf, coordinates): # surf is usually an image
     surf_rect = surf.get_rect(center = coordinates)
     screen.blit(surf, surf_rect)
 
+def center_draw_rect(screen, colour, rect, border_radius = 0):
+    x, y, width, height = rect
+
+    new_rect = pygame.Rect(0, 0, width, height)
+    new_rect.center = (x, y)
+
+    if border_radius == 0:
+        pygame.draw.rect(screen, colour, new_rect)
+    else:
+        pygame.draw.rect(screen, colour, new_rect, border_radius = border_radius) # the argument "border radius" passed in
+        
 ''' calculations '''
 
 def calc_chunk_xy(x, y):

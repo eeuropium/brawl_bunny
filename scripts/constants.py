@@ -17,6 +17,8 @@ SCALE_RATIO = 20
 WIDTH = 16 * SCALE_RATIO # 16 : 9 scaled by SCALE_RATIO
 HEIGHT = 9 * SCALE_RATIO
 
+# 320 x 180 screen
+
 MID_X = WIDTH // 2
 MID_Y = HEIGHT // 2
 
@@ -30,7 +32,13 @@ WATER_BLUE = (48, 162, 196)
 TILE_SIZE = 16
 CHUNK_SIZE = 10
 
+''' Fonts '''
+FONT_15 = pygame.font.Font("data/cooper_black.ttf", 15)
+FONT_10 = pygame.font.Font("data/cooper_black.ttf", 10)
 
+''' Networking '''
+PORT = 5555
+SERVER_IP = "10.80.44.78"
 
 # TBD names
 # good bunnies:
