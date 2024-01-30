@@ -1,16 +1,20 @@
 from scripts.constants import *
 from scripts.gamestates import *
+from scripts.client import Client
 
 class Game():
     def __init__(self):
         pygame.init()
 
+        # window size
         info = pygame.display.Info()
 
         self.WINDOW_SIZE = (DISPLAY_WIDTH, DISPLAY_HEIGHT) # scaled up window size
 
+        # display flags
         # set display flags - FULLSCREEN to allow toggling between fullscreen and OPENFL and DOUBLEBUF for shaders
-        self.display_flags = pygame.FULLSCREEN | pygame.OPENGL | pygame.DOUBLEBUF
+        # self.display_flags = pygame.FULLSCREEN | pygame.OPENGL | pygame.DOUBLEBUF # fullscreen at the start
+        self.display_flags = pygame.OPENGL | pygame.DOUBLEBUF
 
         # to enable shader version https://stackoverflow.com/questions/76151435/creating-a-context-utilizing-moderngl-for-pygame
         pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 3)
@@ -25,20 +29,30 @@ class Game():
         # SCALE_RATIO = 20
         self.screen = pygame.Surface((WIDTH, HEIGHT)) # 320, 180
 
+        # clock
         self.clock = pygame.time.Clock()
 
         pygame.display.set_caption("NEA prototype")
+
+        # client
+        self.client = Client()
+        self.client.run_receive()
+
+        self.player_number = None
 
     def toggle_screen(self):
         self.display_flags ^= pygame.FULLSCREEN # XOR to change pygame.FULLSCREEN to NOT pygame.FULLSCREEN
         self.display_screen = pygame.display.set_mode(self.WINDOW_SIZE, self.display_flags)
 
     def run_game(self):
-        state1 = Menu(self)
-        state1.run_state()
+        # menu = Menu(self)
+        # menu.run_state()
 
-        state2 = WaitingScreen(self)
-        state2.run_state()
+        waiting_screen = MatchMaking(self)
+        waiting_screen.run_state()
+
+        character_selection = CharacterSelection(self)
+        character_selection.run_state()
 
 def run_game():
     game = Game()

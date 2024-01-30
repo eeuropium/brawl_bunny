@@ -27,7 +27,7 @@ class Button():
     def __init__(self, font_name, text, coordinates):
         # create text object
         self.font = font_name
-        
+
         self.mouse_off_text = Text(self.font, (238, 160, 96), text, coordinates)
         self.mouse_on_text = Text(self.font, (244, 204, 161), text, coordinates)
 
@@ -43,7 +43,6 @@ class Button():
         total_w, total_h = self.width + self.border_added_x, self.height + self.border_added_y
         self.collision_rect = pygame.Rect(coordinates[0] - total_w // 2, coordinates[1] - total_h // 2, total_w, total_h)
 
-        print(total_w, total_h)
 
     def display(self, screen, mouse_pos):
         # display different things depending on if the mouse is on the button
@@ -62,3 +61,20 @@ class Button():
                 if self.collision_rect.collidepoint(mouse_pos):
                     return True
                 return False
+
+class Timer():
+    def __init__(self):
+        self.active = False
+
+    def is_active(self):
+        return self.active
+
+    def start(self):
+        self.start_time = time.time()
+        self.active = True
+
+    def time_elapsed(self):
+        return time.time() - self.start_time
+
+    def restart(self):
+        self.start_time = time.time()

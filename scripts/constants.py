@@ -3,6 +3,7 @@ import time
 import random
 import math
 import sys
+import socket
 
 pygame.init()
 
@@ -38,7 +39,16 @@ FONT_10 = pygame.font.Font("data/cooper_black.ttf", 10)
 
 ''' Networking '''
 PORT = 5555
-SERVER_IP = "10.80.44.78"
+# SERVER_IP = "192.168.0.5"
+
+# networking prefixes
+STATE_PREFIX_MAP = {"MatchMaking" : "M",
+              "CharacterSelection": "C"}
+
+hostname = socket.gethostname()
+server_ip = socket.gethostbyname(hostname)
+
+SERVER_IP = server_ip
 
 # TBD names
 # good bunnies:

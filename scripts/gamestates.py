@@ -24,9 +24,6 @@ class GameState():
 
         self.run = True
 
-        self.client = Client()
-        self.client.run_receive()
-
     def process():
         pass
 
@@ -62,6 +59,9 @@ class GameState():
             self.inputs["keys"] = pygame.key.get_pressed()
             self.inputs["events"] = pygame.event.get()
             self.inputs["mouse_pos"] = self.mouse_pos
+
+            ''' networking state prefixes '''
+            self.state_prefix = STATE_PREFIX_MAP[self.__class__.__name__]
 
             ''' handle quitting '''
 
@@ -129,7 +129,7 @@ class Menu(GameState):
         if self.play_button.is_clicked(self.inputs["events"], self.inputs["mouse_pos"]):
             self.run = False
 
-class WaitingScreen(GameState):
+class MatchMaking(GameState):
     def __init__(self, game):
         super().__init__(game)
 
@@ -151,12 +151,11 @@ class WaitingScreen(GameState):
         self.total_players = 4
         self.players_connected = 0
 
-        self.connected = False
         self.player_number_determined = False
 
         self.players_connected_text = Text("FONT_15", (238, 160, 96), f"{self.players_connected}/{self.total_players}", (MID_X, MID_Y))
 
-        # print(self.client)
+        self.end_timer = Timer()
 
     def process(self):
         # display tables
@@ -169,13 +168,41 @@ class WaitingScreen(GameState):
         # center_draw_rect(self.screen, (57, 71, 120), (MID_X, MID_Y + 20, 100, 120), border_radius = 10)
         # center_draw_rect(self.screen, (57, 120, 168), (MID_X, MID_Y + 20, 80, 100), border_radius = 10)
 
-        if not self.connected:
-            self.client.send("1") # request to connect to server
+        if not self.player_number_determined:
+            # send mac address to server to establish connection
+            self.game.client.send(self.state_prefix, str(self.game.client.mac_address))
+        else:
+            # send confirmation to server signalling ok to move on to next state (since player number determined)
+            self.game.client.send(self.state_prefix, f"OK:{self.game.player_number}")
 
-        # if not self.player_number_determined:
-        #     print(self.client.get_message())
+        # receive message
+        message = self.game.client.get_message()
 
+        # server has non-empty message and same state prefix
+        if message and message[0] == self.state_prefix:
+            # get data of all clients from server
+            client_data = message[1:].split(',')
 
+            # check how many players are already connected
+            self.players_connected = len(client_data)
+
+            for data in client_data:
+                mac_address, player_number = list(map(int, data.split(":")))
+
+                # server has assigned mac_address to a player number, player number obtained (on client)
+                if mac_address == self.game.client.get_mac_address():
+                    self.game.player_number = player_number
+                    self.player_number_determined = True
+
+            # all players joined, move on to next state
+            if self.players_connected == self.total_players:
+                self.end_timer.start()
+
+        # 2 seconds to move on to next state after all players connected
+        if self.end_timer.is_active() and self.end_timer.time_elapsed() >= 2:
+            self.run = False
+
+        # display text
         self.players_connected_text.display(self.screen, f"{self.players_connected}/{self.total_players}")
 
 
@@ -187,13 +214,21 @@ class CharacterSelection(GameState):
         self.cards = Cards(["orb_bunny", "nature_bunny", "angel_bunny", "shadow_bunny"])
 
     def process(self):
+
+        # send message to server
+        self.game.client.send(self.state_prefix, self.cards.get_message_to_send(self.inputs, self.game.player_number))
+
         ''' update '''
-        self.cards.update(self.inputs)
+        message = self.game.client.get_message()
+
+        if message and message[0] == self.state_prefix:
+            self.cards.update(message[1:], self.game.player_number)
 
         ''' display '''
         self.cards.display(self.screen)
-        pygame.draw.circle(self.screen, WHITE, self.inputs["mouse_pos"], 2)
 
+        # mouse debug
+        pygame.draw.circle(self.screen, WHITE, self.inputs["mouse_pos"], 2)
 
 class Gameplay(GameState):
     def __init__(self, game):
