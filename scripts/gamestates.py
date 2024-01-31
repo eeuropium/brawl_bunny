@@ -221,12 +221,13 @@ class CharacterSelection(GameState):
         ''' update '''
         message = self.game.client.get_message()
 
+        # update with message from server
         if message and message[0] == self.state_prefix:
             self.cards.update(message[1:], self.game.player_number)
 
         ''' display '''
         self.cards.display(self.screen)
-
+        
         # mouse debug
         pygame.draw.circle(self.screen, WHITE, self.inputs["mouse_pos"], 2)
 

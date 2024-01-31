@@ -53,26 +53,6 @@ class Card:
 
 class Cards:
     def __init__(self, bunny_names):
-        # blue cards and red cards separate to represent choosing characters from opposite teams
-        # self.blue_cards = [Card(bunny_name) for bunny_name in bunny_names]
-        # self.red_cards = [Card(bunny_name) for bunny_name in bunny_names]
-
-        # self.cards = {"BLUE": [Card(bunny_name) for bunny_name in bunny_names],
-        #               "RED": [Card(bunny_name) for bunny_name in bunny_names]}
-        #
-        # # constants to define the coordinates of placing the cards
-        # self.START_X = 70
-        # self.SPACING = 60
-        # self.Y_COOR = {"BLUE" : 50, "RED" : 120}
-        #
-        # self.selected_index = -1
-        #
-        # self.teams = ["BLUE", "RED"]
-
-        self.START_X = 70
-        self.SPACING = 60
-        self.Y_COOR = 50
-
         self.cards = [Card(bunny_name) for bunny_name in bunny_names]
 
         # colours
@@ -82,24 +62,19 @@ class Cards:
         self.NORMAL_RED = (169, 59, 59)
 
         self.TOTAL_PLAYERS = 4
-        #
-        # # initiating player_texts map (text objects)
-        # for player_number in range(1, 5):
-        #     # assigning colour baesd on player number
-        #     if player_number == my_player_number: # my selection, so uses "my" colour
-        #         if i <= TOTAL_PLAYERS // 2:
-        #             colour = MY_BLUE
-        #         else:
-        #             colour = MY_RED
-        #     else:
-        #         if i <= TOTAL_PLAYERS // 2:
-        #             colour = NORMAL_BLUE
-        #         else:
-        #             colour = NORMAL_RED
-        #
-        #     self.player_texts[player_number] = Text("FONT_15", colour, f"P{player_number}", self.START_X + (player_number - 1) * self.SPACING, self.Y_COOR - 50)
 
+        # list to store text objects which display which player is selecting each character
         self.player_texts = []
+
+        self.Y_OFFSET = 30 # offset for texts
+        self.Y_COOR = MID_Y
+
+        SPACING = 60
+        self.X_COOR = [MID_X - 1.5 * SPACING, MID_X - 0.5 * SPACING, MID_X + 0.5 * SPACING, MID_X + 1.5 * SPACING]
+
+
+        self.next_state_timer = Timer()
+        self.next_state = False # indicates if can move on to next state
 
     def get_message_to_send(self, inputs, player_number):
 
@@ -111,11 +86,10 @@ class Cards:
         select_index = -1
 
         for index, card in enumerate(self.cards):
-            card.update((self.START_X + index * self.SPACING, self.Y_COOR), inputs["mouse_pos"])
+            card.update((self.X_COOR[index], self.Y_COOR), inputs["mouse_pos"])
 
             if card.is_clicked(inputs["events"]):
                 select_index = index
-
 
         print(select_index)
 
@@ -132,6 +106,14 @@ class Cards:
             # get data of all clients from server
             client_data = message.split(',')
 
+            # starting end state timer if all player has already selected their characters
+            if not self.next_state_timer.is_active() and len(client_data) == self.TOTAL_PLAYERS:
+                self.next_state_timer.start()
+
+            if self.next_state_timer.time_elapsed >= 2:
+                self.next_state = True
+
+            # processing data
             for data in client_data:
                 index, player_number = map(int, data.split(":"))
 
@@ -161,31 +143,14 @@ class Cards:
                 text = FONT_15.render(text_string, False, colour)
 
                 # add it to list of displayed player texts
-                self.player_texts.append((text, (self.START_X + index * self.SPACING - 20, self.Y_COOR - 50)))
+                self.player_texts.append((text, (self.X_COOR[index], self.Y_COOR - self.Y_OFFSET)))
 
-
-        # for team in self.teams:
-        #     for index, card in enumerate(self.cards[team]):
-        #         # set card state - selected, locked or open
-        #         if self.selected_index == index:
-        #             if self.selected_team == team:
-        #                 card_state = "selected"
-        #             else:
-        #                 card_state = "locked"
-        #         else:
-        #             card_state = "open"
-        #
-        #         # update must come before is_clicked as update checks the position of the mouse
-        #         card.update((self.START_X + index * self.SPACING, self.Y_COOR[team]), inputs["mouse_pos"], card_state)
-        #
-        #         # select card is mosue is clicked
-        #         if card.is_clicked(inputs["events"]):
-        #             self.selected_index = index
-        #             self.selected_team = team
 
     def display(self, screen):
+        # display cards
         for card in self.cards:
             card.display(screen)
 
+        # display text on top of cards
         for player_text, coor in self.player_texts:
-            screen.blit(player_text, coor)
+            display_center(screen, player_text, coor)

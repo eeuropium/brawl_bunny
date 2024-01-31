@@ -19,7 +19,7 @@ class Client():
         self.mac_address = getnode()
 
         # for testing
-        # self.mac_address = random.randint(0, 1e6)
+        self.mac_address = random.randint(0, 1e6)
 
     def run_receive(self):
         receiving_thread = threading.Thread(target = self.receive)

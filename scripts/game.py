@@ -54,6 +54,8 @@ class Game():
         character_selection = CharacterSelection(self)
         character_selection.run_state()
 
+        
+
 def run_game():
     game = Game()
     game.run_game()
