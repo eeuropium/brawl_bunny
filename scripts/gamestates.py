@@ -8,7 +8,7 @@ from scripts.selection import *
 # Gameplay
 from scripts.entity import *
 from scripts.map import Map
-from scripts.camera import Camera
+from scripts.camera import Camera, SimpleSprite
 from scripts.shader import Shader
 from scripts.client import Client
 
@@ -225,9 +225,12 @@ class CharacterSelection(GameState):
         if message and message[0] == self.state_prefix:
             self.cards.update(message[1:], self.game.player_number)
 
+        if self.cards.move_next_state():
+            self.run = False
+
         ''' display '''
         self.cards.display(self.screen)
-        
+
         # mouse debug
         pygame.draw.circle(self.screen, WHITE, self.inputs["mouse_pos"], 2)
 
@@ -239,23 +242,154 @@ class Gameplay(GameState):
         self.map = Map("map2.json")
         self.camera = Camera(self.map.map_surf)
 
-        self.player = ShadowBunny()
+        self.frame_image_map = self.init_animation_images()
+
+        # camera middle coordinates (to determine offsets)
+        self.camera_x, self.camera_y = MID_X, MID_Y # updated in update_display
+
+    # construct a string representing the client inputs. This is sent to the server
+    def get_control_inputs_string(self):
+        s = f"{self.game.player_number}:"
+
+        # add mouse coor inputs
+        s += str(self.inputs["mouse_pos"])
+
+        mouse_pressed = False
+        for event in self.inputs["events"]:
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_pressed = True
+
+        # add mouse pressed input
+        s += str(int(mouse_pressed)) # 0 or 1 for unpressed or pressed
+
+        # add keyboard pressed down inputs
+        for key_character in KEY_ORDERS:
+            s += str(int(self.inputs["keys"][eval(f"pygame.K_{key_character.lower()}")]))
+
+        return s
+
+    # construct map of images
+    def init_animation_images(self):
+        frame_image_map = {}
+
+        ''' General init for all bunnies '''
+
+        bunny_names = ["orb_bunny", "nature_bunny"]
+        character_states = ["idle", "run"]
+
+        for bunny_name in bunny_names:
+            frame_image_map[bunny_name] = {}
+            for character_state in character_states:
+                frames = load_spritesheet(load_image(f"bunny/{bunny_name}/{bunny_name}_{character_state}.png"), 32, 32)
+                frame_image_map[bunny_name][character_state] = frames
+
+        ''' Character specific inits '''
+
+        # orb bunny
+        frame_image_map["orb_bunny"]["hand"] = load_spritesheet(load_image(f"bunny/orb_bunny/orb_bunny_hands.png"), 32, 32)
+
+        # nature bunny
+        return frame_image_map
+
+    def get_frame_y_offset(self, character_name, character_state, frame_index):
+        # idle state has no offset
+        if character_state == "idle":
+            return 0
+
+        return RUN_Y_OFFSET[character_name][frame_index]
+
+    def process_base_message(self, player_number, character_name, x_coor, y_coor, character_state, frame_index, flip_sprite):
+        # set position of camera to player's coordinate
+        if player_number == self.game.player_number:
+            self.camera_x, self.camera_y = x_coor, y_coor
+
+        # get the display image from our map
+        image = self.frame_image_map[character_name][character_state][frame_index]
+
+        # flip image if needed
+        if flip_sprite:
+            image = pygame.transform.flip(image, True, False)
+
+        # pass the image into a sprite object so camera can call the object's "display" method
+        sprite_object = SimpleSprite(image, (x_coor, y_coor))
+
+        # add object to camera sprites
+        self.camera.add_visible_sprite(sprite_object)
+
+    def process_extra_message(self, player_number, character_name, x_coor, y_coor, character_state, frame_index, flip_sprite, extra_info):
+        if character_name == "orb_bunny":
+            hand_frame_index = extra_info[0]
+
+            # convert to integer
+            hand_frame_index = int(hand_frame_index)
+
+            # get hand image
+            hand_image = self.frame_image_map["orb_bunny"]["hand"][hand_frame_index]
+
+            # flip hand image if needed
+            if flip_sprite:
+                hand_image = pygame.transform.flip(hand_image, True, False)
+
+            x_direction = (-1 if flip_sprite else 1)
+
+            y_offset = self.get_frame_y_offset(character_name, character_state, frame_index)
+            hand_sprite = SimpleSprite(hand_image, (x_coor + 4 * x_direction, y_coor + 5 - y_offset))
+
+            self.camera.add_visible_sprite(hand_sprite)
+
+
+    def update_display(self, message):
+        print(message)
+
+        client_data = message.split("|")
+
+        for data in client_data:
+            player_number, data = data.split(":")
+
+            character_prefix, x_coor, y_coor, character_state_prefix, frame_index, flip_sprite, *extra_info = data.split(",")
+
+            # change to appropriate data types
+            player_number = int(player_number)
+            x_coor = int(x_coor)
+            y_coor = int(y_coor)
+            frame_index = int(frame_index)
+            flip_sprite = bool(int(flip_sprite))
+
+            # get full character name and state from prefixes
+            character_name = PREFIX_NAME_MAP[character_prefix]
+            character_state = PREFIX_CHARACTER_STATE_MAP[character_state_prefix] # eg: "R" corresponds to the "run" character state
+
+            self.process_base_message(player_number, character_name, x_coor, y_coor, character_state, frame_index, flip_sprite)
+
+            self.process_extra_message(player_number, character_name, x_coor, y_coor, character_state, frame_index, flip_sprite, extra_info)
+
 
     def process(self):
         ''' initialise '''
         self.camera.clear_visible_sprites()
-        map_obj_collision_boxes =  self.map.get_neighbouring_chunk_data(self.player.x, self.player.y, "map_obj_collision_boxes")
-        objects = self.map.get_neighbouring_chunk_data(self.player.x, self.player.y, "objects")
 
-        ''' updates '''
-        self.player.update(self.inputs, map_obj_collision_boxes)
+        ''' Sending to Server '''
+        # sending input to server
+        send_message = self.get_control_inputs_string()
+        self.game.client.send(self.state_prefix, send_message)
 
-        self.camera.add_visible_sprite(self.player)
+
+        ''' Receiving from Server '''
+        message = self.game.client.get_message()
+
+        if message[0] != "G":
+            return
+
+        ''' Update '''
+        # interpret server message and add player sprites to camera
+        self.update_display(message[1:])
+        objects = self.map.get_neighbouring_chunk_data(self.camera_x, self.camera_y, "objects")
 
         self.camera.add_visible_sprites(objects)
 
         ''' display '''
-        self.camera.display_sprites(self.screen, int(self.player.x + 16), int(self.player.y + 16))
+        # self.camera.display_sprites(self.screen, int(self.player.x + 16), int(self.player.y + 16))
+        self.camera.display_sprites(self.screen, self.camera_x, self.camera_y)
 
 class TestMap(GameState):
     def __init__(self, game):

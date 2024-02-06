@@ -1,4 +1,7 @@
 from scripts.constants import *
+from scripts.managers import EndStateTimer
+from scripts.entity import *
+from scripts.map import Map
 import socket
 
 # does not work for list maps
@@ -51,13 +54,16 @@ class CharacterSelection():
         # selection index to player number map
         self.selection_map = {i:0 for i in range(4)}
 
-        # self.selection_map = {i:-1 for i in range(1, 5)} # player number to selection index map
+        self.end_timer = EndStateTimer(3)
 
     def update(self, data, client_address):
+        if self.end_timer.next_state(all(self.selection_map.values())):
+            self.server.update_state(Gameplay)
+            self.server.state.init_character_selections(self.selection_map)
+
         if not data:
             return
 
-        print(data)
         player_number, selection_index = map(int, data.split(":"))
 
         # condition1: checks that player is making a request
@@ -71,11 +77,59 @@ class CharacterSelection():
                 if index != selection_index and self.selection_map[index] == player_number:
                     self.selection_map[index] = 0
 
+
     def broadcast(self, client_address):
         map_string = map_to_string(self.selection_map)
-
         self.server.send(map_string, client_address)
 
+class Gameplay():
+    def __init__(self, server):
+        self.server = server
+        self.map = Map("map2.json")
+
+    def init_character_selections(self, selection_map):
+        self.players = {}
+        # self.players[selection_map[0]] = OrbBunny()
+        # self.players[selection_map[1]] = NatureBunny()
+        # self.players[selection_map[2]] = AngelBunny()
+        # self.players[selection_map[3]] = NinjaBunny()
+
+        # testing
+        self.players[selection_map[0]] = OrbBunny()
+        self.players[selection_map[1]] = NatureBunny()
+        self.players[selection_map[2]] = NatureBunny()
+        self.players[selection_map[3]] = NatureBunny()
+
+    def update(self, data, client_address):
+        if not data:
+            return
+
+        # splitting up inputs
+        player_number, message = data.split(":")
+        player_number = int(player_number)
+
+        # getting corresponding player object
+        player = self.players[player_number]
+
+        # get collision boxes to pass into player update later
+        map_obj_collision_boxes = self.map.get_neighbouring_chunk_data(player.x, player.y, "map_obj_collision_boxes")
+
+        # update player with input received from client and map objects
+        player.update(message, map_obj_collision_boxes)
+
+        # if player_number == 4:
+        #     print(message)
+        #
+        # print(self.players[player_number].x, self.players[player_number].y)
+
+    def broadcast(self, client_address):
+        s = ""
+
+        for player_number, player_object in self.players.items():
+            s += str(player_number) + ":" + player_object.get_server_send_message()
+            s += "|"
+
+        self.server.send(s[:-1], client_address)
 
 class Server():
     def __init__(self):
@@ -90,8 +144,6 @@ class Server():
             self.state_prefix = STATE_PREFIX_MAP[self.state.__class__.__name__]
             data, client_address = self.receive()
 
-            print(data)
-
             # update information server is holding
             self.state.update(data, client_address)
 
@@ -102,7 +154,7 @@ class Server():
         data, client_address = self.server_socket.recvfrom(1024) # receive data from client
         data = data.decode()
 
-        print(data)
+        # print(data)
 
         # return empty string if client not in the same state as server
         if data[0] != self.state_prefix:

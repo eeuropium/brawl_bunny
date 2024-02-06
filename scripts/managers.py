@@ -78,3 +78,17 @@ class Timer():
 
     def restart(self):
         self.start_time = time.time()
+
+class EndStateTimer(Timer):
+    def __init__(self, wait_time):
+        super().__init__()
+        self.wait_time = wait_time
+
+    def next_state(self, condition): # condition to move onto next state
+        if not self.active and condition:
+            self.start()
+
+        if self.active and self.time_elapsed() >= self.wait_time:
+            return True
+
+        return False

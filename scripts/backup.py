@@ -1,3 +1,34 @@
+# gameplay gamestate before client networking system
+'''
+class Gameplay(GameState):
+    def __init__(self, game):
+        super().__init__(game)
+        self.background_colour = WATER_BLUE
+
+        self.map = Map("map2.json")
+        self.camera = Camera(self.map.map_surf)
+
+        self.player = ShadowBunny()
+
+    def process(self):
+        ''' initialise '''
+        self.camera.clear_visible_sprites()
+        map_obj_collision_boxes =  self.map.get_neighbouring_chunk_data(self.player.x, self.player.y, "map_obj_collision_boxes")
+        objects = self.map.get_neighbouring_chunk_data(self.player.x, self.player.y, "objects")
+
+        ''' updates '''
+        self.player.update(self.inputs, map_obj_collision_boxes)
+
+        self.camera.add_visible_sprite(self.player)
+
+        self.camera.add_visible_sprites(objects)
+
+        ''' display '''
+        self.camera.display_sprites(self.screen, int(self.player.x + 16), int(self.player.y + 16))
+
+'''
+
+
 # old rotation method
 '''
 class OrbBunny(Bunny):
@@ -273,5 +304,4 @@ class Cards:
         for team in self.teams:
             for card in self.cards[team]:
                 card.display(screen)
-
 '''

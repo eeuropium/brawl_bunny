@@ -46,15 +46,41 @@ server_ip = socket.gethostbyname(hostname)
 SERVER_IP = server_ip
 
 # networking prefixes
-STATE_PREFIX_MAP = {"MatchMaking" : "M",
-                    "CharacterSelection": "C"}
 
+def reverse_map(map):
+    return {v: k for k, v in map.items()}
+
+STATE_PREFIX_MAP = {"Menu":               "Z",
+                    "MatchMaking" :       "M",
+                    "CharacterSelection": "C",
+                    "Gameplay":           "G"}
+
+NAME_PREFIX_MAP = {"orb_bunny":    "E",
+                   "nature_bunny": "Q",
+                   "shadow_bunny": "T",
+                   "angel_bunny":  "R"}
+PREFIX_NAME_MAP = reverse_map(NAME_PREFIX_MAP)
+
+CHARACTER_STATE_PREFIX_MAP = {"idle": "I",
+                              "run":  "R"}
+PREFIX_CHARACTER_STATE_MAP = reverse_map(CHARACTER_STATE_PREFIX_MAP)
+
+
+INDEX_BUNNY_MAP = ["OrbBunny", "NatureBunny", "ShadowBunny", "AngelBunny"] # the order of the bunny cards
+
+
+KEY_ORDERS = "WASDE"
+KEY_FUNCTIONS = ["click", "up", "left", "down", "right", "ability"]
+
+RUN_Y_OFFSET = {"orb_bunny":    [0, 1, 3, 1, 0, 1, 3, 1],
+                "nature_bunny": [0, 1, 2, 1, 0, 1, 2, 1]}
+# network inputs for gameplay gamestate
 
 # TBD names
 # good bunnies:
 # orb_bunny - Eunova
 # nature_bunny - Quillia
-# angel_bunny - Areisa
+# angel_bunny - Areisa / Risa
 # shadow_bunny - Shadowstrike
 
 # bad bunnies:

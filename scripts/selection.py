@@ -1,4 +1,5 @@
 from scripts.core_funcs import *
+from scripts.managers import EndStateTimer
 
 class Card:
     def __init__(self, bunny_name):
@@ -29,6 +30,11 @@ class Card:
 
 
     def display(self, screen):
+        # card states:
+        # - open: no players have chosen this card yet
+        # - selected: this player currently is selecting this card
+        # - locked: this card is selected by other players
+
         # mask_points = self.mask.outline()
         # new_points = [(x + self.card_rect.left, y + self.card_rect.top) for x, y in mask_points]
         #
@@ -73,16 +79,10 @@ class Cards:
         self.X_COOR = [MID_X - 1.5 * SPACING, MID_X - 0.5 * SPACING, MID_X + 0.5 * SPACING, MID_X + 1.5 * SPACING]
 
 
-        self.next_state_timer = Timer()
+        self.next_state_timer = EndStateTimer(2)
         self.next_state = False # indicates if can move on to next state
 
     def get_message_to_send(self, inputs, player_number):
-
-        # card states:
-        # - open: no players have chosen this card yet
-        # - selected: this player currently is selecting this card
-        # - locked: this card is selected by other players
-
         select_index = -1
 
         for index, card in enumerate(self.cards):
@@ -91,8 +91,10 @@ class Cards:
             if card.is_clicked(inputs["events"]):
                 select_index = index
 
-        print(select_index)
+        # testing
+        return f"{player_number}:{player_number - 1}"
 
+        # actual
         return f"{player_number}:{select_index}"
 
 
@@ -106,12 +108,7 @@ class Cards:
             # get data of all clients from server
             client_data = message.split(',')
 
-            # starting end state timer if all player has already selected their characters
-            if not self.next_state_timer.is_active() and len(client_data) == self.TOTAL_PLAYERS:
-                self.next_state_timer.start()
-
-            if self.next_state_timer.time_elapsed >= 2:
-                self.next_state = True
+            all_players_selected = True
 
             # processing data
             for data in client_data:
@@ -119,6 +116,7 @@ class Cards:
 
                 # this card is not selected, so no text object displayed
                 if player_number == 0:
+                    all_players_selected = False
                     continue
 
                 # assigning colour baesd on player number
@@ -145,6 +143,8 @@ class Cards:
                 # add it to list of displayed player texts
                 self.player_texts.append((text, (self.X_COOR[index], self.Y_COOR - self.Y_OFFSET)))
 
+            # move on to next state if all player has already selected their characters
+            self.next_state = self.next_state_timer.next_state(all_players_selected)
 
     def display(self, screen):
         # display cards
@@ -154,3 +154,6 @@ class Cards:
         # display text on top of cards
         for player_text, coor in self.player_texts:
             display_center(screen, player_text, coor)
+
+    def move_next_state(self):
+        return self.next_state

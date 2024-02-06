@@ -1,6 +1,25 @@
 from scripts.entity import *
 from scripts.map import Map
 
+class SimpleSprite():
+    def __init__(self, image, coor, display_mode = "blit"):
+        self.image = image
+        self.x, self.y = coor
+
+        self.display_mode = display_mode
+
+    def display(self, screen, offset_x, offset_y):
+        display_coor = (int(self.x) + offset_x, int(self.y) + offset_y)
+
+        if self.display_mode == "blit":
+            screen.blit(self.image, display_coor)
+        elif self.display_mode == "center":
+            display_center(screen, image, display_coor)
+
+    def get_bottom_y(self):
+        return self.y + 16 # WARNING
+
+
 class Camera():
     def __init__(self, map_surf):
         self.visible_sprites = []

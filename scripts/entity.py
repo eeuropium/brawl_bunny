@@ -9,10 +9,10 @@ class CharacterState():
         self.character = character
 
     def update(self):
-        self.character.image = self.animation.get_frame()
+        self.character.frame_index = self.animation.get_frame_index()
 
-        if self.character.x_direction == -1:
-            self.character.image = pygame.transform.flip(self.character.image, True, False)
+        # if self.character.x_direction == -1:
+        #     self.character.image = pygame.transform.flip(self.character.image, True, False)
 
     def get_y_offsets(self):
         return None
@@ -67,7 +67,7 @@ class Layer():
         screen.blit(self.image, (display_x, display_y))
 
 
-class ChangingLayer(Layer):
+class ChangingLayer(Layer):                                     # for when facing left and right
     def __init__(self, base_offset_x = 0, base_offset_y = 0, left_offset_x = 0, right_offset_x = 0):
         # constant values
         self.base_offset_x = base_offset_x
@@ -109,8 +109,9 @@ class Bunny():
 
         self.state = self.idle_state
 
-        ''' Image '''
-        self.character_layer = Layer()
+        # ''' Image '''
+        # self.character_layer = Layer()
+
 
         ''' Movement '''
         self.SPEED = 1.5
@@ -123,19 +124,8 @@ class Bunny():
         self.collision_box_x_offset, self.collision_box_y_offset, hitbox_width, hitbox_height = get_box(f"box/collision_box/entities/{name}_collision_box.png")
         self.collision_box = pygame.FRect(MID_X, MID_Y, hitbox_width, hitbox_height) # placeholder for start_x, start_y
 
-        ''' Keyboard Controls '''
-
-        # # arrow keys
-        # self.controls = {"left":  pygame.K_LEFT,
-        #                  "right": pygame.K_RIGHT,
-        #                  "up":    pygame.K_UP,
-        #                  "down":  pygame.K_DOWN}
-
-        # WASD
-        self.controls = {"left":  pygame.K_a,
-                         "right": pygame.K_d,
-                         "up":    pygame.K_w,
-                         "down":  pygame.K_s}
+        ''' Networking '''
+        self.frame_index = 0
 
     def change_state(self, state):
         self.state = state
@@ -145,30 +135,50 @@ class Bunny():
         self.hand_state = hand_state
         self.hand_state.animation.reset()
 
-    def update(self, inputs, map_obj_collision_boxes):
+    # def update(self, client_message, map_obj_collision_boxes):
+    def update(self, input_message, map_obj_collision_boxes):
+        # give meaningful names to user message string
+        self.controls = {}
+
+        # "mouse_coor" - list containing two elements, x and y coordinates of mouse
+        # "click" - 0 or 1 indiciating if mouse is clicked
+        # "up" - W key pressed
+        # "left" - A key pressed
+        # "down" - S key pressed
+        # "right" - D key pressed
+        # "ability" - E key pressed
+
+        mouse_coor, key_inputs = input_message.split("]")
+
+        mouse_coor = list(map(int, mouse_coor[1:].split(", ")))
+        mouse_coor = pygame.math.Vector2(mouse_coor)
+
+        self.controls["mouse_pos"] = mouse_coor
+
+        for index, key_function in enumerate(KEY_FUNCTIONS):
+            self.controls[key_function] = bool(int(key_inputs[index]))
 
         ''' Movement '''
-
         # similar to legend of zelda youtube tutorial
 
         # update direction vector based on inputs
-        if inputs["keys"][self.controls["left"]]:
+        if self.controls["left"]:
             self.direction.x = -1
-        elif inputs["keys"][self.controls["right"]]:
+        elif self.controls["right"]:
             self.direction.x = 1
         else:
             self.direction.x = 0
 
-        if inputs["keys"][self.controls["up"]]:
+        if self.controls["up"]:
             self.direction.y = -1
-        elif inputs["keys"][self.controls["down"]]:
+        elif self.controls["down"]:
             self.direction.y = 1
         else:
             self.direction.y = 0
 
         # normalize so that speed is constant even when travelling diagonally
         if self.direction.magnitude() != 0:
-            self.direction = self.direction.normalize() * self.SPEED * inputs["dt"]
+            self.direction = self.direction.normalize() * self.SPEED
 
         # update x coordinate
         self.collision_box.centerx += self.direction.x
@@ -197,24 +207,36 @@ class Bunny():
         self.y = self.collision_box.top - self.collision_box_y_offset
 
         # determine animation direction with mouse position
-        if inputs["mouse_pos"].x < MID_X:
+        if self.controls["mouse_pos"].x < MID_X:
             self.x_direction = -1
         else:
             self.x_direction = 1
 
         ''' Animation '''
 
-        # check if have to change from current state to new state
+        # # check if have to change from current state to new state
         self.state.determine_state()
 
-        # updates image and direction
+        # # updates image (frame index sent to client) and direction
         self.state.update()
+
+    def get_server_send_message(self):
+        character_prefix = NAME_PREFIX_MAP[self.name]
+
+        character_state_prefix = CHARACTER_STATE_PREFIX_MAP[self.state.__class__.__name__.lower()]
+
+        if self.x_direction == 1:
+            flip_sprite = 0
+        else:
+            flip_sprite = 1
+
+        #         (character type)        (coordinates)                  (state)           (frame number)  (horizontal flip)
+        return f"{character_prefix},{int(self.x)},{int(self.y)},{character_state_prefix},{self.frame_index},{flip_sprite}"
 
     def get_display_coords(self, offset_x, offset_y):
         return (int(self.x) + offset_x, int(self.y) + offset_y)
 
     def display(self, screen, offset_x, offset_y):
-
         # calculate the display coordinates
         display_x, display_y = self.get_display_coords(offset_x, offset_y)
 
@@ -245,7 +267,9 @@ class OrbBunny(Bunny):
         for index, angle in enumerate(self.hand_angles):
             self.hand_images[angle] = self.hand_sprites[index]
 
-        self.hand_layer = ChangingLayer(4, 5)
+        self.hand_frame_index = 3
+
+        # self.hand_layer = ChangingLayer(4, 5)
 
         self.run_state.set_y_offsets([0, 1, 3, 1, 0, 1, 3, 1])
 
@@ -266,7 +290,7 @@ class OrbBunny(Bunny):
         super().update(inputs, map_obj_collision_boxes)
 
         # calculate angle in radians
-        rotate_angle = math.atan2(MID_Y - inputs["mouse_pos"].y, abs(inputs["mouse_pos"].x - MID_X))
+        rotate_angle = math.atan2(MID_Y - self.controls["mouse_pos"].y, abs(self.controls["mouse_pos"].x - MID_X))
         # self.y - mouse_pos.y as the y-axis of pygame's coordinate system is different from cartesian system
         # abs makes sure that even when image is flipped we still get the correct angles
 
@@ -275,8 +299,15 @@ class OrbBunny(Bunny):
 
         # best angle calculations
         best_angle = self.find_closest_angle(rotate_angle, self.hand_angles)
-        self.hand_layer.update(self.hand_images[best_angle], self.x_direction, self.state)
+        self.hand_frame_index = self.hand_angles.index(best_angle)
 
+        # self.hand_layer.update(self.hand_images[best_angle], self.x_direction, self.state)
+
+    def get_server_send_message(self):
+        s = super().get_server_send_message()
+        s += f",{self.hand_frame_index}"
+
+        return s
 
     def display(self, screen, offset_x, offset_y):
         display_x, display_y = self.get_display_coords(offset_x, offset_y)

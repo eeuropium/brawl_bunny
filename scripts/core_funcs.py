@@ -3,7 +3,16 @@ from scripts.constants import *
 ''' import / loading data '''
 
 def load_image(path):
-    image = pygame.image.load("data/images/" + path).convert_alpha()
+    # if not window_available: # for server, where no display mode is set up #https://stackoverflow.com/questions/18905989/pygame-error-no-video-mode-has-been-set
+    #     image = pygame.image.load("./data/images/" + path)
+    # else:
+    #     image = pygame.image.load("./data/images/" + path).convert_alpha()
+
+    try:
+        image = pygame.image.load("./data/images/" + path).convert_alpha()
+    except pygame.error:
+        image = pygame.image.load("./data/images/" + path)
+
     return image
 
 def load_spritesheet(spritesheet_image, frame_width, frame_height):
@@ -40,7 +49,7 @@ def center_draw_rect(screen, colour, rect, border_radius = 0):
         pygame.draw.rect(screen, colour, new_rect)
     else:
         pygame.draw.rect(screen, colour, new_rect, border_radius = border_radius) # the argument "border radius" passed in
-        
+
 ''' calculations '''
 
 def calc_chunk_xy(x, y):
