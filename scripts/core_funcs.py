@@ -52,6 +52,21 @@ def center_draw_rect(screen, colour, rect, border_radius = 0):
 
 ''' calculations '''
 
+def cartesian_to_polar(center_x, center_y, x, y):
+    x -= center_x
+    y -= center_y
+
+    rho = math.sqrt(x**2 + y**2)
+    phi = math.atan2(y, x)
+
+    return phi, rho
+
+def polar_to_cartesian(center_x, center_y, angle_radians, distance):
+    # angle_radians = math.radians(angle_degrees)
+    x = center_x + distance * math.cos(angle_radians)
+    y = center_y + distance * math.sin(angle_radians)
+    return int(x), int(y)
+
 def calc_chunk_xy(x, y):
     chunk_x = int(x // (CHUNK_SIZE * TILE_SIZE))
     chunk_y = int(x // (CHUNK_SIZE * TILE_SIZE))

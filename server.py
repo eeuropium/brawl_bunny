@@ -137,6 +137,8 @@ class Server():
         self.server_socket.bind((SERVER_IP, PORT))
 
         self.state = MatchMaking(self)
+        # self.state = Gameplay(self) # for testing
+
         self.state_prefix = STATE_PREFIX_MAP[self.state.__class__.__name__]
 
     def run(self):
@@ -171,15 +173,6 @@ class Server():
     def update_state(self, new_state):
         self.state = new_state(self)
 
-
-    # def update(self, *args):
-    #     self.matchmaking(*args)
-    #
-    # def matchmaking(self, data, client_address):
-    #     print(data, client_address)
-    #
-    # def broadcast(self, client_address):
-    #     self.send("0", client_address)
 
 if __name__ == "__main__":
     server = Server()

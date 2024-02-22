@@ -311,7 +311,7 @@ class Gameplay(GameState):
             image = pygame.transform.flip(image, True, False)
 
         # pass the image into a sprite object so camera can call the object's "display" method
-        sprite_object = SimpleSprite(image, (x_coor, y_coor))
+        sprite_object = SimpleSprite(image, (x_coor, y_coor), display_mode = "center")
 
         # add object to camera sprites
         self.camera.add_visible_sprite(sprite_object)
@@ -337,6 +337,35 @@ class Gameplay(GameState):
 
             self.camera.add_visible_sprite(hand_sprite)
 
+        if character_name == "nature_bunny":
+            p0, p1, pl, pr = [pygame.math.Vector2() for i in range(4)]
+
+            p0.x, p0.y, p1.x, p1.y, pl.x, pl.y, pr.x, pr.y = list(map(int, extra_info))
+
+            class Vine():
+                def __init__(self, p0, p1, p2, bottom_y):
+                    DIVISIONS = 100
+                    self.points = []
+
+                    for i in range(0, DIVISIONS):
+                        t = i / DIVISIONS # t value between 0 and 1
+                        self.points.append(p0 * (1 - t) * (1 - t) + 2 * t * (1 - t) * p1 + t * t * p2)
+
+                    self.bottom_y = bottom_y
+
+                def display(self, screen, offset_x, offset_y):
+                    render_points = [(p.x + offset_x, p.y + offset_y) for p in self.points]
+
+                    pygame.draw.lines(screen, (57, 120, 168), False, render_points, width = 5)
+
+                def get_bottom_y(self):
+                    return self.bottom_y
+
+            # add left vine object
+            self.camera.add_visible_sprite(Vine(p0, p1, pl, y_coor))
+
+            # add right vine object
+            self.camera.add_visible_sprite(Vine(p0, p1, pr, y_coor))
 
     def update_display(self, message):
         print(message)
@@ -387,9 +416,12 @@ class Gameplay(GameState):
 
         self.camera.add_visible_sprites(objects)
 
+
         ''' display '''
         # self.camera.display_sprites(self.screen, int(self.player.x + 16), int(self.player.y + 16))
         self.camera.display_sprites(self.screen, self.camera_x, self.camera_y)
+
+        pygame.draw.circle(self.screen, BLACK, (MID_X, MID_Y), 2) # testing
 
 class TestMap(GameState):
     def __init__(self, game):

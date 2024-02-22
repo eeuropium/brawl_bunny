@@ -203,8 +203,11 @@ class Bunny():
                     self.collision_box.top = collision_box.bottom
 
         # update positions for displaying character
-        self.x = self.collision_box.left - self.collision_box_x_offset
-        self.y = self.collision_box.top - self.collision_box_y_offset
+        # self.x = self.collision_box.left - self.collision_box_x_offset
+        # self.y = self.collision_box.top - self.collision_box_y_offset
+
+        self.x = self.collision_box.centerx
+        self.y = self.collision_box.centery
 
         # determine animation direction with mouse position
         if self.controls["mouse_pos"].x < MID_X:
@@ -321,6 +324,48 @@ class OrbBunny(Bunny):
 class NatureBunny(Bunny):
     def __init__(self):
         super().__init__("nature_bunny")
+
+        self.controls = {}
+        self.controls["mouse_pos"] = (MID_X, MID_Y)
+
+    def get_server_send_message(self):
+        s = super().get_server_send_message()
+
+        # character mid x and mid y
+        mid_x, mid_y = self.x + 16, self.y + 16
+
+        mouse_x, mouse_y = self.controls["mouse_pos"]
+
+        # limit the radius to a certain cap so vine does not extend indefinitely
+
+        MAX_MAGNITUDE = 20
+        vec = (pygame.math.Vector2(mouse_x, mouse_y) - pygame.math.Vector2(MID_X, MID_Y))
+
+        if vec.magnitude() != 0:
+            vec = vec.normalize() * min(vec.magnitude(), MAX_MAGNITUDE)
+
+        mouse_x, mouse_y = (pygame.math.Vector2(MID_X, MID_Y) + vec).x, (pygame.math.Vector2(MID_X, MID_Y) + vec).y
+
+        # print(mouse_x, mouse_y)
+
+        # idle offset for Bezier endpoint
+        x_offset = 20
+        y_offset = 5 + 3 * math.sin(time.time() * 0.9)
+
+        lx, ly = int(mid_x - x_offset), int(mid_y + y_offset)
+        rx, ry = int(mid_x + x_offset), int(mid_y + y_offset)
+
+        # left vine moves
+        if mouse_x < MID_X:
+            lx = int(mouse_x - MID_X + self.x)
+            ly = int(mouse_y - MID_Y + self.y)
+        else:
+            rx = int(mouse_x - MID_X + self.x)
+            ry = int(mouse_y - MID_Y + self.y)
+
+        s += f",{int(mid_x)},{int(mid_y)},{int(mid_x)},{int(mid_y - 40)},{lx},{ly},{rx},{ry}"
+
+        return s
 
 class AngelBunny(Bunny):
     def __init__(self):
