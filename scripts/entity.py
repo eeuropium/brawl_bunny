@@ -1,6 +1,7 @@
 from scripts.constants import *
 from scripts.core_funcs import *
 from scripts.animation import *
+from scripts.managers import *
 
 ''' Character States '''
 
@@ -203,11 +204,9 @@ class Bunny():
                     self.collision_box.top = collision_box.bottom
 
         # update positions for displaying character
-        # self.x = self.collision_box.left - self.collision_box_x_offset
-        # self.y = self.collision_box.top - self.collision_box_y_offset
+        self.x = self.collision_box.left - self.collision_box_x_offset + 16
+        self.y = self.collision_box.top - self.collision_box_y_offset + 16
 
-        self.x = self.collision_box.centerx
-        self.y = self.collision_box.centery
 
         # determine animation direction with mouse position
         if self.controls["mouse_pos"].x < MID_X:
@@ -328,32 +327,58 @@ class NatureBunny(Bunny):
         self.controls = {}
         self.controls["mouse_pos"] = (MID_X, MID_Y)
 
-    def get_server_send_message(self):
-        s = super().get_server_send_message()
 
-        # character mid x and mid y
-        mid_x, mid_y = self.x + 16, self.y + 16
+        ''' Attack '''
+
+        # initialise vine (Bezier curves) start point, control point and end point variables
+        self.vine_lx, self.vine_ly, self.vine_rx, self.vine_ry = MID_X, MID_Y, MID_X, MID_Y
+
+        self.MAX_MAGNITUDE = 20 # max magnitude of end point for idle vine, limit the radius to a certain cap so vine does not extend indefinitely
+        self.VINE_EXTENSION = 20 # extension when clicking attack
+
+        self.attack_timer = Timer()
+        self.TOTAL_ATTACK_TIME = 0.5
+
+    def vine_ease(self, x):
+        return -(x-1)**3
+
+    def update(self, inputs, map_obj_collision_boxes):
+        super().update(inputs, map_obj_collision_boxes)
+
+        ''' update vines '''
 
         mouse_x, mouse_y = self.controls["mouse_pos"]
 
-        # limit the radius to a certain cap so vine does not extend indefinitely
-
-        MAX_MAGNITUDE = 20
+        # vector from middle of the screen to the mouse
         vec = (pygame.math.Vector2(mouse_x, mouse_y) - pygame.math.Vector2(MID_X, MID_Y))
 
-        if vec.magnitude() != 0:
-            vec = vec.normalize() * min(vec.magnitude(), MAX_MAGNITUDE)
+        # reduce the magnitude of the radius so that its capped at MAX_MAGNITUDE
 
+        current_magnitude = min(vec.magnitude(), self.MAX_MAGNITUDE)
+
+        if vec.magnitude() != 0: # normalize function cannot work if magnitude is 0
+            # start the attack timer if mouse is clicked
+            if self.controls["click"] and not self.attack_timer.is_active():
+                self.attack_timer.start()
+
+            # calculate new magnitude based on time since last click
+            if self.attack_timer.is_active():
+                if self.attack_timer.time_elapsed() >= self.TOTAL_ATTACK_TIME:
+                    self.attack_timer.end()
+                else:
+                    current_magnitude += self.VINE_EXTENSION * self.vine_ease(self.attack_timer.time_elapsed() / self.TOTAL_ATTACK_TIME)
+
+            vec = vec.normalize() * current_magnitude
+
+        # new "fake" mouse position
         mouse_x, mouse_y = (pygame.math.Vector2(MID_X, MID_Y) + vec).x, (pygame.math.Vector2(MID_X, MID_Y) + vec).y
-
-        # print(mouse_x, mouse_y)
 
         # idle offset for Bezier endpoint
         x_offset = 20
         y_offset = 5 + 3 * math.sin(time.time() * 0.9)
 
-        lx, ly = int(mid_x - x_offset), int(mid_y + y_offset)
-        rx, ry = int(mid_x + x_offset), int(mid_y + y_offset)
+        lx, ly = int(self.x - x_offset), int(self.y + y_offset)
+        rx, ry = int(self.x + x_offset), int(self.y + y_offset)
 
         # left vine moves
         if mouse_x < MID_X:
@@ -363,7 +388,12 @@ class NatureBunny(Bunny):
             rx = int(mouse_x - MID_X + self.x)
             ry = int(mouse_y - MID_Y + self.y)
 
-        s += f",{int(mid_x)},{int(mid_y)},{int(mid_x)},{int(mid_y - 40)},{lx},{ly},{rx},{ry}"
+        self.vine_lx, self.vine_ly, self.vine_rx, self.vine_ry = lx, ly, rx, ry
+
+    def get_server_send_message(self):
+        s = super().get_server_send_message()
+
+        s += f",{int(self.x)},{int(self.y)},{int(self.x)},{int(self.y - 30)},{self.vine_lx},{self.vine_ly},{self.vine_rx},{self.vine_ry}"
 
         return s
 

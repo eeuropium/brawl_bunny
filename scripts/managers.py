@@ -73,6 +73,9 @@ class Timer():
         self.start_time = time.time()
         self.active = True
 
+    def end(self):
+        self.active = False
+
     def time_elapsed(self):
         return time.time() - self.start_time
 

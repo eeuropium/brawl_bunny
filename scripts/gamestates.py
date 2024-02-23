@@ -368,7 +368,7 @@ class Gameplay(GameState):
             self.camera.add_visible_sprite(Vine(p0, p1, pr, y_coor))
 
     def update_display(self, message):
-        print(message)
+        # print(message)
 
         client_data = message.split("|")
 
