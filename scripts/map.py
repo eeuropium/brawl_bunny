@@ -111,7 +111,7 @@ class Map:
                         # calculate x, y coordinates on map surface
                         x, y = cur_col * TILE_SIZE, cur_row * TILE_SIZE
 
-                        if tile_id in [1, 3, 4, 5, 17, 19, 33, 34, 35]:
+                        if tile_id in [1, 3, 4, 5, 17, 19, 33, 34, 35]: # hard coded
                             chunk_x, chunk_y = calc_chunk_xy(x, y)
                             chunks[(chunk_x, chunk_y)]["map_obj_collision_boxes"].append(pygame.Rect(x, y, TILE_SIZE, TILE_SIZE))
 

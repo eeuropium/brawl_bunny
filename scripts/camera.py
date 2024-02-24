@@ -19,7 +19,22 @@ class SimpleSprite():
             display_center(screen, self.image, display_coor)
 
     def get_bottom_y(self):
-        return self.y + 16 # WARNING
+        return self.y + self.y_offset
+
+class Circle():
+    def __init__(self, colour, coor, radius):
+        self.colour = colour
+        self.x, self.y = coor
+        self.radius = radius
+
+
+    def display(self, screen, offset_x, offset_y):
+        display_coor = (int(self.x) + offset_x, int(self.y) + offset_y)
+        pygame.draw.circle(screen, self.colour, display_coor, self.radius)
+
+    def get_bottom_y(self):
+        return self.y
+
 
 
 class Camera():

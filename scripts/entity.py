@@ -2,6 +2,7 @@ from scripts.constants import *
 from scripts.core_funcs import *
 from scripts.animation import *
 from scripts.managers import *
+from scripts.orbs import Orbs # for Orb Bunny
 
 ''' Character States '''
 
@@ -269,12 +270,27 @@ class OrbBunny(Bunny):
         for index, angle in enumerate(self.hand_angles):
             self.hand_images[angle] = self.hand_sprites[index]
 
+        # initialise starting hand frame index
         self.hand_frame_index = 3
-
-        # self.hand_layer = ChangingLayer(4, 5)
 
         self.run_state.set_y_offsets([0, 1, 3, 1, 0, 1, 3, 1])
 
+        ''' Orbs '''
+
+        self.NUMBER_OF_ORBS = 5
+
+        self.orbs = Orbs(self.NUMBER_OF_ORBS)
+        self.orbs_list = [] # list storing position of orbs (includes attacking orb position)
+        self.attack_orb_index = -1 # -1 if no orb is used in attack currently
+
+        self.orb_targets = [None for i in range(self.NUMBER_OF_ORBS)]
+        self.orb_timers = [Timer() for i in range(self.NUMBER_OF_ORBS)]
+
+        self.attack_timer = Timer()
+        self.TOTAL_ATTACK_TIME = 1.5
+
+    def orb_ease(self, x):
+        return -4 * (x - 0.5) * (x - 0.5) + 1
 
     def find_closest_angle(self, angle, available_angles):
         min_diff = 180 # initialise to greatest possible
@@ -291,6 +307,7 @@ class OrbBunny(Bunny):
     def update(self, inputs, map_obj_collision_boxes):
         super().update(inputs, map_obj_collision_boxes)
 
+        ''' Hand '''
         # calculate angle in radians
         rotate_angle = math.atan2(MID_Y - self.controls["mouse_pos"].y, abs(self.controls["mouse_pos"].x - MID_X))
         # self.y - mouse_pos.y as the y-axis of pygame's coordinate system is different from cartesian system
@@ -305,11 +322,96 @@ class OrbBunny(Bunny):
 
         # self.hand_layer.update(self.hand_images[best_angle], self.x_direction, self.state)
 
+        ''' Orbs '''
+        self.orbs.rotate()
+        self.orbs.apply_transformations(self.x, self.y)
+
+        self.orbs_list = self.orbs.get_info()
+
+        # normal attack
+
+        # if not self.attack_timer.is_active() and self.controls["click"]:
+        #     best_dist = 1e9
+        #
+        #     # mouse pos is only relative to the screen. To make it relative to the world map, we minus MID position and add the player's position vectords
+        #     self.target_pos = self.controls["mouse_pos"] - pygame.math.Vector2(MID_X, MID_Y) + pygame.math.Vector2(self.x, self.y)
+        #
+        #     for index, (x, y, radius) in enumerate(self.orbs_list):
+        #         idle_pos = pygame.math.Vector2(x, y)
+        #         cur_dist = self.target_pos.distance_to(idle_pos)
+        #
+        #         if cur_dist < best_dist:
+        #             self.attack_orb_index = index
+        #             best_dist = cur_dist
+        #
+        #     self.attack_timer.start()
+
+        # checks if any orb (ammo) is available
+        if any([target_pos == None for target_pos in self.orb_targets]) and self.controls["click"]:
+            best_dist = 1e9
+
+            # mouse pos is only relative to the screen. To make it relative to the world map, we minus MID position and add the player's position vectords
+            self.target_pos = self.controls["mouse_pos"] - pygame.math.Vector2(MID_X, MID_Y) + pygame.math.Vector2(self.x, self.y)
+
+            # selecting the orb closest to the clicked position
+            for index, (x, y, radius) in enumerate(self.orbs_list):
+
+                # don't allow orbs that are currently used in attack to be selected
+                if self.orb_targets[index] != None:
+                    continue
+
+                idle_pos = pygame.math.Vector2(x, y)
+                cur_dist = self.target_pos.distance_to(idle_pos)
+
+                if cur_dist < best_dist:
+                    attack_orb_index = index
+                    best_dist = cur_dist
+
+            # choose the closest orb as the attacking orb
+            self.orb_timers[attack_orb_index].start()
+            self.orb_targets[attack_orb_index] = self.target_pos
+
+
+        # calculate position of all orbs
+        for orb_index in range(self.NUMBER_OF_ORBS):
+            orb_timer = self.orb_timers[orb_index]
+
+            if orb_timer.is_active():
+                if orb_timer.time_elapsed() >= self.TOTAL_ATTACK_TIME:
+                    self.orb_targets[orb_index] = None
+                    self.orb_timers[orb_index].end()
+
+            x, y, radius = self.orbs_list[orb_index]
+
+            idle_pos = pygame.math.Vector2(x, y)
+
+            if orb_timer.is_active():
+                t = self.orb_ease(orb_timer.time_elapsed() / self.TOTAL_ATTACK_TIME)
+
+                # caluclate new position
+                new_x, new_y = t * (self.orb_targets[orb_index]) + (1 - t) * idle_pos
+
+                # update orbs list with new calculated orb position for the attacking orb
+                self.orbs_list[orb_index] = (new_x, new_y, 5)
+
+
+
     def get_server_send_message(self):
         s = super().get_server_send_message()
-        s += f",{self.hand_frame_index}"
 
-        return s
+        # add hand info
+        s += f",{self.hand_frame_index},"
+
+        # add orbs info
+        if len(self.orbs_list) == 0:
+            s += "0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,"
+        else:
+            for x, y, radius in self.orbs_list:
+                s += f"{int(x)},{int(y)},{radius},"
+
+        # s += "," + self.orbs.get_send_message()
+
+        return s[:-1]
 
     def display(self, screen, offset_x, offset_y):
         display_x, display_y = self.get_display_coords(offset_x, offset_y)
@@ -363,7 +465,7 @@ class NatureBunny(Bunny):
 
             # calculate new magnitude based on time since last click
             if self.attack_timer.is_active():
-                if self.attack_timer.time_elapsed() >= self.TOTAL_ATTACK_TIME:
+                if self.attack_timer.time_elapsed() >= self.TOTAL_ATTACK_TIME: # end attack timer if attack time has passed
                     self.attack_timer.end()
                 else:
                     current_magnitude += self.VINE_EXTENSION * self.vine_ease(self.attack_timer.time_elapsed() / self.TOTAL_ATTACK_TIME)

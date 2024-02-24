@@ -1,4 +1,5 @@
 import moderngl
+from scripts.constants import *
 from time import time
 from array import array
 
@@ -30,6 +31,12 @@ class Shader():
         # set start time to allow time calculations in shader
         self.start_time = time()
 
+        # dictionary of data that are passed in to the program. This is a public variable that can be accessed outside the class
+        self.shader_data = {
+        "use_shadow_realm_shader": False,
+        "orbs_data": [(0.0, 0.0, 0.0) for i in range(20)],
+        }
+
     def surf_to_texture(self, surf):
         texture = self.context.texture(surf.get_size(), 4) # surface dimensions and number of colour channels (RGBA)
 
@@ -51,7 +58,22 @@ class Shader():
         self.frame_texture.use(0)
         self.program["frame_texture"] = 0
         self.program["time"] = time() - self.start_time
-        self.program["use_shadow_realm_shader"] = False
+
+        ''' pass data into the shader '''
+
+        # shadow bunny shader
+        self.program["use_shadow_realm_shader"] = self.shader_data["use_shadow_realm_shader"]
+
+        # orb bunny orbs
+        self.program["orbs_data"] = self.shader_data["orbs_data"]
+
+        # for index, orb_data in enumerate(self.shader_data["orbs_data"]):
+        #     self.program[f"orbs_data[{index}]"] = orb_data[0], orb_data[1], orb_data[2]
+
+            # self.program[f"orbs_data[{index}].x"] = orb_data[0]
+            # self.program[f"orbs_data[{index}].y"] = orb_data[1]
+            # self.program[f"orbs_data[{index}].z"] = orb_data[2]
+
 
         self.render_object.render(mode = moderngl.TRIANGLE_STRIP)
 

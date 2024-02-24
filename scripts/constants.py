@@ -38,7 +38,8 @@ FONT_15 = pygame.font.Font("data/cooper_black.ttf", 15)
 FONT_10 = pygame.font.Font("data/cooper_black.ttf", 10)
 
 ''' Networking '''
-PORT = 5555
+PORT = 9991
+
 # SERVER_IP = "192.168.0.5"
 hostname = socket.gethostname()
 server_ip = socket.gethostbyname(hostname)

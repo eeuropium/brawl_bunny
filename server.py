@@ -96,9 +96,9 @@ class Gameplay():
 
         # testing
         self.players[selection_map[0]] = OrbBunny()
-        self.players[selection_map[1]] = NatureBunny()
+        self.players[selection_map[1]] = OrbBunny()
         self.players[selection_map[2]] = NatureBunny()
-        self.players[selection_map[3]] = NatureBunny()
+        self.players[selection_map[3]] = OrbBunny()
 
     def update(self, data, client_address):
         if not data:

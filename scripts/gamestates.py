@@ -8,7 +8,7 @@ from scripts.selection import *
 # Gameplay
 from scripts.entity import *
 from scripts.map import Map
-from scripts.camera import Camera, SimpleSprite
+from scripts.camera import *
 from scripts.shader import Shader
 from scripts.client import Client
 
@@ -318,6 +318,7 @@ class Gameplay(GameState):
 
     def process_extra_message(self, player_number, character_name, x_coor, y_coor, character_state, frame_index, flip_sprite, extra_info):
         if character_name == "orb_bunny":
+            ''' Hand '''
             hand_frame_index = extra_info[0]
 
             # convert to integer
@@ -333,9 +334,22 @@ class Gameplay(GameState):
             x_direction = (-1 if flip_sprite else 1)
 
             y_offset = self.get_frame_y_offset(character_name, character_state, frame_index)
-            hand_sprite = SimpleSprite(hand_image, (x_coor + 4 * x_direction, y_coor + 5 - y_offset))
+            hand_sprite = SimpleSprite(hand_image, (x_coor + 4 * x_direction, y_coor + 5 - y_offset), display_mode = "center")
 
             self.camera.add_visible_sprite(hand_sprite)
+
+
+            ''' Orbs '''
+            orbs_info = extra_info[1:]
+
+            # add orbs to camera
+            for i in range(0, 5 * 3, 3):
+                x, y, radius = int(orbs_info[i]), int(orbs_info[i+1]), float(orbs_info[i+2])
+
+                orb = Circle((138, 236, 241), (x, y), radius)
+                self.camera.add_visible_sprite(orb)
+
+                self.shader.shader_data["orbs_data"].append((x + MID_X - self.camera_x, y + MID_Y - self.camera_y, radius + 3)) # glow radius is 10
 
         if character_name == "nature_bunny":
             p0, p1, pl, pr = [pygame.math.Vector2() for i in range(4)]
@@ -359,7 +373,7 @@ class Gameplay(GameState):
                     pygame.draw.lines(screen, (57, 120, 168), False, render_points, width = 5)
 
                 def get_bottom_y(self):
-                    return self.bottom_y
+                    return self.bottom_y - 1
 
             # add left vine object
             self.camera.add_visible_sprite(Vine(p0, p1, pl, y_coor))
@@ -397,6 +411,9 @@ class Gameplay(GameState):
         ''' initialise '''
         self.camera.clear_visible_sprites()
 
+        # clear the list
+        self.shader.shader_data["orbs_data"] = []
+
         ''' Sending to Server '''
         # sending input to server
         send_message = self.get_control_inputs_string()
@@ -416,6 +433,8 @@ class Gameplay(GameState):
 
         self.camera.add_visible_sprites(objects)
 
+
+        self.shader.shader_data["orbs_data"].extend([(0.0, 0.0, 0.0) for i in range(20 - len(self.shader.shader_data["orbs_data"]))])
 
         ''' display '''
         # self.camera.display_sprites(self.screen, int(self.player.x + 16), int(self.player.y + 16))

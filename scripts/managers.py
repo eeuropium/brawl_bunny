@@ -82,6 +82,18 @@ class Timer():
     def restart(self):
         self.start_time = time.time()
 
+class LimitTimer(Timer):
+    def __init__(self, time_limit):
+        super().__init__()
+        self.time_limit = time_limit
+        self.time_offset = 0
+
+    def get_t_value(self):
+        return (self.time_elpased() + self.time_offset) / self.time_limit
+
+    def set_t_value(self, t):
+        self.time_offest = (t - self.get_t_value()) * self.time_limit
+
 class EndStateTimer(Timer):
     def __init__(self, wait_time):
         super().__init__()

@@ -22,7 +22,10 @@ class Client():
         self.mac_address = random.randint(0, 1e6)
 
     def run_receive(self):
-        receiving_thread = threading.Thread(target = self.receive)
+        receiving_thread = threading.Thread(target = self.receive, daemon = True)
+        # daemon true allows all threads to stop
+        # without it, only the main thread will exit, the other threads will continue to work
+
         receiving_thread.start()
 
     def receive(self):
