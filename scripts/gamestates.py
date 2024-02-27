@@ -474,13 +474,17 @@ class Gameplay(GameState):
             self.camera.add_visible_sprite(Vine(p0, p1, pr, y_coor))
 
         elif character_name == "angel_bunny":
-            hand_prefix, hand_frame_index, orb_x, orb_y, orb_radius = extra_info
+            hand_prefix, hand_frame_index, orb_x, orb_y, orb_radius, light_beam_target_x, light_beam_target_y = extra_info
 
             # convert data types
             hand_frame_index = int(hand_frame_index)
+
             orb_x = int(orb_x)
             orb_y = int(orb_y)
             orb_radius = float(orb_radius)
+
+            light_beam_target_x = int(light_beam_target_x)
+            light_beam_target_y = int(light_beam_target_y)
 
             ''' Hand '''
             hand_state = PREFIX_ANGEL_BUNNY_HAND_STATE_MAP[hand_prefix]
@@ -497,7 +501,7 @@ class Gameplay(GameState):
             #     y_offset = 0
 
             # make hand image into a sprite and add to camera
-            hand_sprite = SimpleSprite(hand_image, (x_coor + 0 * x_direction, y_coor - y_offset), y_offset = 3, display_mode = "center")
+            hand_sprite = SimpleSprite(hand_image, (x_coor, y_coor - y_offset), y_offset = 3, display_mode = "center")
 
             self.camera.add_visible_sprite(hand_sprite)
 
@@ -509,6 +513,10 @@ class Gameplay(GameState):
 
             self.shader.shader_data["light_orb"] = (orb_x + MID_X - self.camera_x, orb_y + MID_Y - self.camera_y, orb_radius)
 
+            ''' Ability '''
+
+            self.shader.shader_data["light_beam_start"] = (MID_X - self.camera_x, MID_Y - self.camera_y)
+            self.shader.shader_data["light_beam_end"] = (light_beam_target_x + MID_X - self.camera_x, light_beam_target_y + MID_Y - self.camera_y)
 
         elif character_name == "shadow_bunny":
             sword_frame_index, visible, in_shadow_realm = extra_info

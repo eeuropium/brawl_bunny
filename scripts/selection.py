@@ -86,7 +86,7 @@ class Cards:
                 select_index = index
 
         # testing
-        return f"{player_number}:{player_number - 1}"
+        # return f"{player_number}:{player_number - 1}"
 
         # actual
         return f"{player_number}:{select_index}"

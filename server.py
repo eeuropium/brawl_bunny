@@ -91,16 +91,16 @@ class Gameplay():
         self.players = {}
 
         # correct order
-        # self.players[selection_map[0]] = OrbBunny()
-        # self.players[selection_map[1]] = NatureBunny()
-        # self.players[selection_map[2]] = AngelBunny()
-        # self.players[selection_map[3]] = NinjaBunny()
+        self.players[selection_map[0]] = OrbBunny()
+        self.players[selection_map[1]] = NatureBunny()
+        self.players[selection_map[2]] = AngelBunny()
+        self.players[selection_map[3]] = ShadowBunny()
 
         # testing
-        self.players[selection_map[0]] = NatureBunny()
-        self.players[selection_map[1]] = ShadowBunny()
-        self.players[selection_map[2]] = OrbBunny()
-        self.players[selection_map[3]] = AngelBunny()
+        # self.players[selection_map[0]] = NatureBunny()
+        # self.players[selection_map[1]] = ShadowBunny()
+        # self.players[selection_map[2]] = OrbBunny()
+        # self.players[selection_map[3]] = AngelBunny()
 
     def update(self, data, client_address):
         if not data:

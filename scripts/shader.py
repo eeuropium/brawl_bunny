@@ -36,6 +36,8 @@ class Shader():
         "use_shadow_realm_shader": False,
         "orbs_data": [(0.0, 0.0, 0.0) for i in range(20)],
         "light_orb": (0.0, 0.0, 0.0),
+        "light_beam_start": (-1, -1),
+        "light_beam_end": (-1, -1),
         }
 
     def surf_to_texture(self, surf):
@@ -70,6 +72,10 @@ class Shader():
 
         # angel bunny light orb
         self.program["light_orb"] = self.shader_data["light_orb"]
+
+        # angel bunny light beam
+        self.program["light_beam_start"] = self.shader_data["light_beam_start"]
+        self.program["light_beam_end"] = self.shader_data["light_beam_end"]
 
 
         self.render_object.render(mode = moderngl.TRIANGLE_STRIP)

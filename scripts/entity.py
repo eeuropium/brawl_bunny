@@ -654,6 +654,11 @@ class AngelBunny(Bunny):
 
         self.orb_y_offset = 2
 
+
+        ''' Ability '''
+        self.ability_target_x = -1
+        self.ability_target_y = -1
+
     def hand_idle_to_run(self):
         return self.state == self.run_state
 
@@ -754,15 +759,25 @@ class AngelBunny(Bunny):
                 orb_hit_object = True
 
         # reset orb
-        if orb_hit_object:
+        if orb_hit_object or pygame.math.Vector2(self.x, self.y).distance_to(self.orb_pos) >= BUNNY_STATS[self.name]["max_range"]:
             self.orb_alive = False
             self.orb_radius = 0
+
+        ''' Ability '''
+        # orbs
+        vec = self.controls["mouse_pos"] - pygame.math.Vector2(MID_X, MID_Y)
+
+        if vec.magnitude() != 0:
+            vec = vec.normalize() * 100
+
+        self.ability_target_x = self.x + vec.x
+        self.ability_target_y = self.y + vec.y
 
 
     def get_server_send_message(self):
         s = super().get_server_send_message()
-        #      (type of hand animation)   (frame)                   (orb position)               (orb radius)
-        s += f",{self.hand_prefix},{self.hand_frame_index},{int(self.orb_pos.x)},{int(self.orb_pos.y)},{self.orb_radius}"
+        #      (type of hand animation)   (frame)                      (orb position)                    (orb radius)              (beam position)
+        s += f",{self.hand_prefix},{self.hand_frame_index},{int(self.orb_pos.x)},{int(self.orb_pos.y)},{self.orb_radius},{int(self.ability_target_x + self.x)},{int(self.ability_target_y + self.y)}"
 
         return s
 

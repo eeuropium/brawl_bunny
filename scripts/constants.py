@@ -56,6 +56,8 @@ server_ip = socket.gethostbyname(hostname)
 
 SERVER_IP = server_ip
 
+SERVER_IP = "10.80.5.134"
+
 # networking prefixes
 
 def reverse_map(map):
@@ -117,7 +119,8 @@ BUNNY_STATS = {"orb_bunny":    {"health": 5200,
                "angel_bunny":  {"health": 4200,
                                 "normal_attack_scaling": 100, # the damage is calculated by orb_radius * normal_attack_scaling
                                 "total_ability_charge": 7000,
-                                "projectile_speed": 3}
+                                "projectile_speed": 3,
+                                "max_range": 120}
 }
 
 # total players for each game. Must be even number
