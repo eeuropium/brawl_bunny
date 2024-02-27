@@ -247,6 +247,13 @@ class Gameplay(GameState):
         # camera middle coordinates (to determine offsets)
         self.camera_x, self.camera_y = MID_X, MID_Y # updated in update_display
 
+        # if the shadow bunny is visible on the previous frame
+        # this helps us know when to add smoke particles (which are processed locally due to the huge data volume)
+        self.prev_shadow_bunny_visible = True
+
+        self.respawn_text = Text("FONT_15", (48, 44, 46), "", (MID_X, MID_Y))
+        self.respawn_time_left = -1
+
     # construct a string representing the client inputs. This is sent to the server
     def get_control_inputs_string(self):
         s = f"{self.game.player_number}:"
@@ -255,12 +262,17 @@ class Gameplay(GameState):
         s += str(self.inputs["mouse_pos"])
 
         mouse_pressed = False
+        mouse_up = False
+
         for event in self.inputs["events"]:
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pressed = True
+            elif event.type == pygame.MOUSEBUTTONUP:
+                mouse_up = True
 
         # add mouse pressed input
-        s += str(int(mouse_pressed)) # 0 or 1 for unpressed or pressed
+        s += str(int(mouse_pressed)) # 0 or 1 for no click or click
+        s += str(int(mouse_up)) # 0 or 1 for no mouse up or mouse up
 
         # add keyboard pressed down inputs
         for key_character in KEY_ORDERS:
@@ -272,9 +284,9 @@ class Gameplay(GameState):
     def init_animation_images(self):
         frame_image_map = {}
 
-        ''' General init for all bunnies '''
+        ''' General init for all bunnies ''' # idle and run states only
 
-        bunny_names = ["orb_bunny", "nature_bunny"]
+        bunny_names = ["orb_bunny", "nature_bunny", "angel_bunny", "shadow_bunny"]
         character_states = ["idle", "run"]
 
         for bunny_name in bunny_names:
@@ -288,7 +300,16 @@ class Gameplay(GameState):
         # orb bunny
         frame_image_map["orb_bunny"]["hand"] = load_spritesheet(load_image(f"bunny/orb_bunny/orb_bunny_hands.png"), 32, 32)
 
-        # nature bunny
+        # angel bunny
+        frame_image_map["angel_bunny"]["idle_hands"] = load_spritesheet(load_image(f"bunny/angel_bunny/angel_bunny_idle_hands.png"), 32, 32)
+        frame_image_map["angel_bunny"]["run_hands"] = load_spritesheet(load_image(f"bunny/angel_bunny/angel_bunny_run_hands.png"), 32, 32)
+        frame_image_map["angel_bunny"]["charge_hands"] = load_spritesheet(load_image(f"bunny/angel_bunny/angel_bunny_charge_hands.png"), 32, 32)
+        frame_image_map["angel_bunny"]["release_hands"] = load_spritesheet(load_image(f"bunny/angel_bunny/angel_bunny_release_hands.png"), 32, 32)
+
+        # shadow bunny
+        frame_image_map["shadow_bunny"]["sword"] = load_spritesheet(load_image(f"bunny/shadow_bunny/shadow_bunny_sword.png"), 64, 32)
+
+
         return frame_image_map
 
     def get_frame_y_offset(self, character_name, character_state, frame_index):
@@ -298,7 +319,7 @@ class Gameplay(GameState):
 
         return RUN_Y_OFFSET[character_name][frame_index]
 
-    def process_base_message(self, player_number, character_name, x_coor, y_coor, character_state, frame_index, flip_sprite):
+    def process_base_message(self, player_number, character_name, x_coor, y_coor, character_state, frame_index, flip_sprite, health, ability_charge, extra_info):
         # set position of camera to player's coordinate
         if player_number == self.game.player_number:
             self.camera_x, self.camera_y = x_coor, y_coor
@@ -313,10 +334,81 @@ class Gameplay(GameState):
         # pass the image into a sprite object so camera can call the object's "display" method
         sprite_object = SimpleSprite(image, (x_coor, y_coor), display_mode = "center")
 
-        # add object to camera sprites
-        self.camera.add_visible_sprite(sprite_object)
+        # special check as if shadow bunny is in shadow_realm, it should not be added to the camera                         # check if character is alive
+        if not(character_name == "shadow_bunny" and player_number != self.game.player_number and bool(int(extra_info[2]))) and health > 0:
+            # add object to camera sprites
+            self.camera.add_visible_sprite(sprite_object)
 
-    def process_extra_message(self, player_number, character_name, x_coor, y_coor, character_state, frame_index, flip_sprite, extra_info):
+        # respawn management
+        if player_number == self.game.player_number:
+            # in this case health represents negative of the time left till respawn
+            if health < 0:
+                self.respawn_time_left = -health
+            else:
+                self.respawn_time_left = -1 # value indicates player is alive and not currently respawning
+
+        ''' Bars '''
+        class Bar():
+            def __init__(self, percentage_complete, coor, colour, y_offset):
+                self.BAR_WIDTH = 20
+                self.BAR_HEIGHT = 3
+
+                self.percent = percentage_complete
+
+                self.x, self.y = coor
+
+                self.colour = colour
+                self.y_offset = y_offset
+
+            def display(self, screen, offset_x, offset_y):
+                top_left_x, top_left_y = int(self.x - self.BAR_WIDTH // 2) + offset_x, int(self.y - self.y_offset - self.BAR_HEIGHT // 2) + offset_y
+
+                # outer border outline
+                pygame.draw.rect(screen, (94, 54, 67), (top_left_x - 1, top_left_y - 1, self.BAR_WIDTH + 2, self.BAR_HEIGHT + 2))
+
+                # brown bar indicating full bar
+                pygame.draw.rect(screen, (122, 68, 74), (top_left_x, top_left_y, self.BAR_WIDTH, self.BAR_HEIGHT))
+
+                # blue / red bar indicating bar left
+                pygame.draw.rect(screen, self.colour, (top_left_x, top_left_y, self.BAR_WIDTH * self.percent, self.BAR_HEIGHT))
+
+            def get_bottom_y(self):
+                return self.y
+
+        class HealthBar(Bar):
+            def __init__(self, health, total_health, coor, colour):
+                percent = health / total_health
+
+                # if there is health, there should be at least one pixel to indicate the health
+                if health > 0:
+                    percent = max(percent, 1/20) # since bar width is 20, our percent is 1/20
+
+                super().__init__(percent, coor, colour, 20) # y_offset is 20
+
+        class AbilityBar(Bar):
+            def __init__(self, ability_charge, total_ability_charge, coor):
+                super().__init__(ability_charge / total_ability_charge, coor, (244, 179, 27), 27) # y_offset is 20
+
+        # show health bar for all players
+        # special check as health bar should not be shown if shadow bunny is in shadow realm                                # check if alive
+        if not(character_name == "shadow_bunny" and player_number != self.game.player_number and bool(int(extra_info[2]))) and health > 0:
+            health_bar = HealthBar(health, BUNNY_STATS[character_name]["health"], (x_coor, y_coor), get_player_colour(player_number, self.game.player_number))
+            self.camera.add_visible_sprite(health_bar)
+
+        # show abiltiy bar only for YOUR player
+        if player_number == self.game.player_number:
+            ability_bar = AbilityBar(ability_charge, BUNNY_STATS[character_name]["total_ability_charge"], (x_coor, y_coor))
+            self.camera.add_visible_sprite(ability_bar)
+
+    def process_extra_message(self, player_number, character_name, x_coor, y_coor, character_state, frame_index, flip_sprite, health, ability_charge, extra_info):
+
+        if health <= 0: # don't need to display anything since character is dead
+            return
+
+        # commonly used variables
+        x_direction = (-1 if flip_sprite else 1)
+        y_offset = self.get_frame_y_offset(character_name, character_state, frame_index)
+
         if character_name == "orb_bunny":
             ''' Hand '''
             hand_frame_index = extra_info[0]
@@ -331,9 +423,7 @@ class Gameplay(GameState):
             if flip_sprite:
                 hand_image = pygame.transform.flip(hand_image, True, False)
 
-            x_direction = (-1 if flip_sprite else 1)
-
-            y_offset = self.get_frame_y_offset(character_name, character_state, frame_index)
+            # make hand image into a sprite and add to camera
             hand_sprite = SimpleSprite(hand_image, (x_coor + 4 * x_direction, y_coor + 5 - y_offset), display_mode = "center")
 
             self.camera.add_visible_sprite(hand_sprite)
@@ -351,7 +441,9 @@ class Gameplay(GameState):
 
                 self.shader.shader_data["orbs_data"].append((x + MID_X - self.camera_x, y + MID_Y - self.camera_y, radius + 3)) # glow radius is 10
 
-        if character_name == "nature_bunny":
+
+
+        elif character_name == "nature_bunny":
             p0, p1, pl, pr = [pygame.math.Vector2() for i in range(4)]
 
             p0.x, p0.y, p1.x, p1.y, pl.x, pl.y, pr.x, pr.y = list(map(int, extra_info))
@@ -381,15 +473,81 @@ class Gameplay(GameState):
             # add right vine object
             self.camera.add_visible_sprite(Vine(p0, p1, pr, y_coor))
 
-    def update_display(self, message):
-        # print(message)
+        elif character_name == "angel_bunny":
+            hand_prefix, hand_frame_index, orb_x, orb_y, orb_radius = extra_info
 
+            # convert data types
+            hand_frame_index = int(hand_frame_index)
+            orb_x = int(orb_x)
+            orb_y = int(orb_y)
+            orb_radius = float(orb_radius)
+
+            ''' Hand '''
+            hand_state = PREFIX_ANGEL_BUNNY_HAND_STATE_MAP[hand_prefix]
+
+            # get hand_image
+            hand_image = self.frame_image_map["angel_bunny"][f"{hand_state}_hands"][hand_frame_index]
+
+            # flip hand image if needed
+            if flip_sprite:
+                hand_image = pygame.transform.flip(hand_image, True, False)
+
+            # running animation already incorporated y-offset in the art
+            # if hand_state == "run":
+            #     y_offset = 0
+
+            # make hand image into a sprite and add to camera
+            hand_sprite = SimpleSprite(hand_image, (x_coor + 0 * x_direction, y_coor - y_offset), y_offset = 3, display_mode = "center")
+
+            self.camera.add_visible_sprite(hand_sprite)
+
+            ''' Orb '''
+            # if orb_radius > 0:
+                # orb = Circle((244, 179, 27), (orb_x, orb_y), orb_radius, y_offset = orb_radius)
+
+                # self.camera.add_visible_sprite(orb)
+
+            self.shader.shader_data["light_orb"] = (orb_x + MID_X - self.camera_x, orb_y + MID_Y - self.camera_y, orb_radius)
+
+
+        elif character_name == "shadow_bunny":
+            sword_frame_index, visible, in_shadow_realm = extra_info
+
+            # convert data types
+            sword_frame_index = int(sword_frame_index)
+            visible = bool(int(visible))
+            in_shadow_realm = bool(int(in_shadow_realm))
+
+
+            ''' Sword Animation '''
+            # get sword image
+            sword_image = self.frame_image_map["shadow_bunny"]["sword"][sword_frame_index]
+
+            # flip sword image if needed
+            if flip_sprite:
+                sword_image = pygame.transform.flip(sword_image, True, False)
+
+            # make sword image into a sprite and add to camera                                      # y_offset is more than character y so that sword displays in front of the character
+            sword_sprite = SimpleSprite(sword_image, (x_coor + 16 * x_direction, y_coor - y_offset), y_offset = y_coor + 1, display_mode = "center")
+
+            # display sword if attacking, even when using ability
+            if player_number == self.game.player_number or visible:
+                self.camera.add_visible_sprite(sword_sprite)
+
+            ''' Shadow Realm shader ''' # for other players
+
+            if player_number == self.game.player_number:
+                self.shader.shader_data["use_shadow_realm_shader"] = in_shadow_realm
+
+
+
+    def update_display(self, message):
         client_data = message.split("|")
 
         for data in client_data:
             player_number, data = data.split(":")
 
-            character_prefix, x_coor, y_coor, character_state_prefix, frame_index, flip_sprite, *extra_info = data.split(",")
+            character_prefix, x_coor, y_coor, character_state_prefix, frame_index, flip_sprite, health, ability_charge, *extra_info = data.split(",")
 
             # change to appropriate data types
             player_number = int(player_number)
@@ -397,15 +555,16 @@ class Gameplay(GameState):
             y_coor = int(y_coor)
             frame_index = int(frame_index)
             flip_sprite = bool(int(flip_sprite))
+            health = int(health)
+            ability_charge = int(ability_charge)
 
             # get full character name and state from prefixes
             character_name = PREFIX_NAME_MAP[character_prefix]
             character_state = PREFIX_CHARACTER_STATE_MAP[character_state_prefix] # eg: "R" corresponds to the "run" character state
 
-            self.process_base_message(player_number, character_name, x_coor, y_coor, character_state, frame_index, flip_sprite)
+            self.process_base_message(player_number, character_name, x_coor, y_coor, character_state, frame_index, flip_sprite, health, ability_charge, extra_info)
 
-            self.process_extra_message(player_number, character_name, x_coor, y_coor, character_state, frame_index, flip_sprite, extra_info)
-
+            self.process_extra_message(player_number, character_name, x_coor, y_coor, character_state, frame_index, flip_sprite, health, ability_charge, extra_info)
 
     def process(self):
         ''' initialise '''
@@ -418,7 +577,6 @@ class Gameplay(GameState):
         # sending input to server
         send_message = self.get_control_inputs_string()
         self.game.client.send(self.state_prefix, send_message)
-
 
         ''' Receiving from Server '''
         message = self.game.client.get_message()
@@ -433,14 +591,13 @@ class Gameplay(GameState):
 
         self.camera.add_visible_sprites(objects)
 
-
         self.shader.shader_data["orbs_data"].extend([(0.0, 0.0, 0.0) for i in range(20 - len(self.shader.shader_data["orbs_data"]))])
 
         ''' display '''
-        # self.camera.display_sprites(self.screen, int(self.player.x + 16), int(self.player.y + 16))
         self.camera.display_sprites(self.screen, self.camera_x, self.camera_y)
 
-        pygame.draw.circle(self.screen, BLACK, (MID_X, MID_Y), 2) # testing
+        if self.respawn_time_left != -1:
+            self.respawn_text.display(self.screen, f"Respawning in: {self.respawn_time_left}")
 
 class TestMap(GameState):
     def __init__(self, game):

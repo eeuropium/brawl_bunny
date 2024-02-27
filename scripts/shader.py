@@ -35,6 +35,7 @@ class Shader():
         self.shader_data = {
         "use_shadow_realm_shader": False,
         "orbs_data": [(0.0, 0.0, 0.0) for i in range(20)],
+        "light_orb": (0.0, 0.0, 0.0),
         }
 
     def surf_to_texture(self, surf):
@@ -67,12 +68,8 @@ class Shader():
         # orb bunny orbs
         self.program["orbs_data"] = self.shader_data["orbs_data"]
 
-        # for index, orb_data in enumerate(self.shader_data["orbs_data"]):
-        #     self.program[f"orbs_data[{index}]"] = orb_data[0], orb_data[1], orb_data[2]
-
-            # self.program[f"orbs_data[{index}].x"] = orb_data[0]
-            # self.program[f"orbs_data[{index}].y"] = orb_data[1]
-            # self.program[f"orbs_data[{index}].z"] = orb_data[2]
+        # angel bunny light orb
+        self.program["light_orb"] = self.shader_data["light_orb"]
 
 
         self.render_object.render(mode = moderngl.TRIANGLE_STRIP)

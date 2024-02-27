@@ -4,7 +4,7 @@ from scripts.constants import *
 from scripts.core_funcs import *
 
 class Object:
-    def __init__(self, x, y, image, collision_box_rect):
+    def __init__(self, x, y, image, collision_box_rect, hitbox_rect):
         ''' Coordinates '''
         self.x = x
         self.bottom_y = y
@@ -20,6 +20,14 @@ class Object:
         top += self.y
 
         self.collision_box = pygame.Rect((left, top, width, height))
+
+        ''' Hitbox '''
+        left, top, width, height = hitbox_rect
+        left += self.x
+        top += self.y
+
+        self.hit_box = pygame.Rect((left, top, width, height))
+
 
     def get_bottom_y(self):
         return self.bottom_y
@@ -40,7 +48,8 @@ class Map:
         self.tile_dict = {} # tile id to tile surface
         self.id_to_name = {} # coresponding number id of objects eg: {"big_tree" : 257, "bush" : 258 ...}
         self.object_surf = {} # corresponding surface / image of objects
-        self.object_collision_box = {} # corresponding collision tuple
+        self.object_collision_box = {} # corresponding collision rect tuple
+        self.object_hitbox = {} # corresponding hit rect tuple
 
         self.build_dicts()
 
@@ -67,6 +76,8 @@ class Map:
 
             self.object_collision_box[object_name] = get_box(f"box/collision_box/objects/{object_name}_collision_box.png")
 
+            self.object_hitbox[object_name] = get_box(f"box/hitbox/objects/{object_name}_hitbox.png")
+
 
     def build_map_surf(self, map_path):
         # load json file containing map data
@@ -89,7 +100,8 @@ class Map:
         for x in range(-1, (columns // CHUNK_SIZE) + 1): # -1 to account for objects which may be partly offscreen
             for y in range(-1, (rows // CHUNK_SIZE) + 1): # +1 to account for rounding down division
                 chunks[(x, y)] = {"objects": [],
-                                  "map_obj_collision_boxes": []}
+                                  "map_obj_collision_boxes": [],
+                                  "map_obj_hitboxes": []}
 
         for layer in layers:
             if layer["type"] == "tilelayer":
@@ -114,6 +126,7 @@ class Map:
                         if tile_id in [1, 3, 4, 5, 17, 19, 33, 34, 35]: # hard coded
                             chunk_x, chunk_y = calc_chunk_xy(x, y)
                             chunks[(chunk_x, chunk_y)]["map_obj_collision_boxes"].append(pygame.Rect(x, y, TILE_SIZE, TILE_SIZE))
+                            chunks[(chunk_x, chunk_y)]["map_obj_hitboxes"].append(pygame.Rect(x, y, TILE_SIZE, TILE_SIZE))
 
                         map_surf.blit(tile_surf, (x, y))
 
@@ -121,7 +134,7 @@ class Map:
                 objects = layer["objects"]
 
                 for object in objects:
-                    # get x, y and if of object
+                    # get x, y and id of object
                     x = round(object["x"])
                     y = round(object["y"])
 
@@ -131,15 +144,20 @@ class Map:
                     # get surface and collision box of object
                     surf = self.object_surf[object_name]
 
+                    # get collision box rectangle
                     collision_box_rect = self.object_collision_box[object_name]
+                    # get hitbox rectangle
+                    hitbox_rect = self.object_hitbox[object_name]
 
                     # create obstacle object
-                    object = Object(x, y, surf, collision_box_rect)
+                    object = Object(x, y, surf, collision_box_rect, hitbox_rect)
 
                     # add object to corresponding chunk
                     chunk_x, chunk_y = calc_chunk_xy(x, y)
                     chunks[(chunk_x, chunk_y)]["objects"].append(object)
                     chunks[(chunk_x, chunk_y)]["map_obj_collision_boxes"].append(object.collision_box)
+                    chunks[(chunk_x, chunk_y)]["map_obj_hitboxes"].append(object.hit_box)
+
 
         return map_surf, chunks
 

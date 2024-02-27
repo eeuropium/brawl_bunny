@@ -88,11 +88,18 @@ class LimitTimer(Timer):
         self.time_limit = time_limit
         self.time_offset = 0
 
+    def end(self):
+        super().end()
+        self.time_offset = 0
+        
+    def is_over(self):
+        return (self.time_elapsed() + self.time_offset) >= self.time_limit
+
     def get_t_value(self):
-        return (self.time_elpased() + self.time_offset) / self.time_limit
+        return (self.time_elapsed() + self.time_offset) / self.time_limit
 
     def set_t_value(self, t):
-        self.time_offest = (t - self.get_t_value()) * self.time_limit
+        self.time_offset = (t - self.get_t_value()) * self.time_limit
 
 class EndStateTimer(Timer):
     def __init__(self, wait_time):

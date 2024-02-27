@@ -117,6 +117,22 @@ def get_box(path):
 
 ''' colours '''
 
+# get colour (for selection, health bar etc.) for each player (blue or red based on team)
+def get_player_colour(player_number, my_player_number):
+    
+    if player_number == my_player_number: # the currently considered player is you, so own colours
+        if player_number <= TOTAL_PLAYERS // 2:
+            colour = OWN_BLUE
+        else:
+            colour = OWN_RED
+    else: # teammate colours
+        if player_number <= TOTAL_PLAYERS // 2:
+            colour = TEAMMATE_BLUE
+        else:
+            colour = TEAMMATE_RED
+
+    return colour
+
 def palette_swap(org_image, old_colour, new_colour):
     black_surf = pygame.Surface(org_image.get_size())
     black_surf.blit(org_image, (0, 0))

@@ -8,6 +8,7 @@ uniform float time;
 uniform bool use_shadow_realm_shader;
 
 uniform vec3 orbs_data[MAX_SPHERES];
+uniform vec3 light_orb;
 
 in vec2 uvs; // x, y coordinate of current pixel - coordinates range from 0 to 1 (same as pygame - top left corner is (0, 0))
 out vec4 output_colour;
@@ -54,29 +55,6 @@ vec4 shadow_realm_shader(vec4 pixel_colour) {
     }
 }
 
-
-// vec4 orbs_shader(vec4 pixel_colour) {
-//     float x_coor = uvs.x * WIDTH, y_coor = uvs.y * HEIGHT;
-//
-//     // vec3 orb = orb_pos;
-//     //
-//     // if (distance(vec2(x_coor, y_coor), vec2(orb.x, orb.y)) <= orb.z) {
-//     //     return vec4(255, 0, 0, 255);
-//     // }
-//
-//     for (int i = 0; i < MAX_SPHERES; i++) {
-//         vec3 orb = orbs_data[i];
-//
-//         if (orb.z == 0.0) break; // 0 radius, meaning no orbs left to process
-//
-//         if (distance(vec2(x_coor, y_coor), vec2(orb.x, orb.y)) <= orb.z) {
-//             return vec4(255, 0, 0, 255);
-//         }
-//     }
-//
-//     return pixel_colour;
-// }
-
 vec4 orbs_shader(vec4 pixel_colour) {
     float x_coor = uvs.x * WIDTH, y_coor = uvs.y * HEIGHT;
 
@@ -117,6 +95,27 @@ vec4 orbs_shader(vec4 pixel_colour) {
     return pixel_colour;
 }
 
+vec4 light_orb_shader(vec4 pixel_colour) {
+    // calculate x and y coordinates in the game using uvs
+    float x_coor = uvs.x * WIDTH, y_coor = uvs.y * HEIGHT;
+
+    // radius is 0
+    if (light_orb.z == 0.0) return pixel_colour;
+
+    // distance from pixel to center of the light orb
+    float dist = distance(vec2(x_coor, y_coor), light_orb.xy);
+
+    // pixel is greater than radius of orb, so we return
+    if (dist > light_orb.z) return pixel_colour;
+
+    vec3 col = vec3(223, 246, 245);
+
+    float t = 1 - pow(dist / light_orb.z, 2);
+    if (t < 0.05) t = 1;
+
+    return mix(vec4(244, 179, 27, 255) / 255, vec4(col / 255, 1.0), t);
+    // return vec4(mix(pixel_colour.rgb, vec3(244, 204, 161), 1 - alpha), 0);  // vec4(244, 204, 161, alpha);
+}
 
 
 void main() {
@@ -130,6 +129,9 @@ void main() {
 
     // orbs shader
     output_colour = orbs_shader(output_colour);
+
+    // light orb shader
+    output_colour = light_orb_shader(output_colour);
     // vec2 sample_pos = vec2(uvs.x + sin(uvs.y * 10 + time * 0.01) * 0.1, uvs.y);
     // f_color = vec4(texture(tex, sample_pos).rg, texture(tex, sample_pos).b * 1.5, 1.0);
 }

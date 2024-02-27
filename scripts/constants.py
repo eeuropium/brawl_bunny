@@ -29,9 +29,19 @@ WHITE = (255, 255, 255)
 
 WATER_BLUE = (48, 162, 196)
 
+OWN_BLUE = (138, 236, 241)
+TEAMMATE_BLUE = (40, 205, 223)
+
+OWN_RED = (230, 71, 46)
+TEAMMATE_RED = (169, 59, 59)
+
+
 ''' Map '''
 TILE_SIZE = 16
 CHUNK_SIZE = 10
+
+''' Animation '''
+FRAME_INTERVAL = 0.1
 
 ''' Fonts '''
 FONT_15 = pygame.font.Font("data/cooper_black.ttf", 15)
@@ -56,25 +66,71 @@ STATE_PREFIX_MAP = {"Menu":               "Z",
                     "CharacterSelection": "C",
                     "Gameplay":           "G"}
 
+# character name to a character prefix
 NAME_PREFIX_MAP = {"orb_bunny":    "E",
                    "nature_bunny": "Q",
                    "shadow_bunny": "T",
                    "angel_bunny":  "R"}
 PREFIX_NAME_MAP = reverse_map(NAME_PREFIX_MAP)
 
+# character state to a  character prefix
 CHARACTER_STATE_PREFIX_MAP = {"idle": "I",
                               "run":  "R"}
 PREFIX_CHARACTER_STATE_MAP = reverse_map(CHARACTER_STATE_PREFIX_MAP)
+
+
+ANGEL_BUNNY_HAND_STATE_PREFIX_MAP = {"idle":    "I",
+                                     "run":     "R",
+                                     "charge":  "C",
+                                     "release": "L"}
+PREFIX_ANGEL_BUNNY_HAND_STATE_MAP = reverse_map(ANGEL_BUNNY_HAND_STATE_PREFIX_MAP)
 
 
 INDEX_BUNNY_MAP = ["OrbBunny", "NatureBunny", "ShadowBunny", "AngelBunny"] # the order of the bunny cards
 
 
 KEY_ORDERS = "WASDE"
-KEY_FUNCTIONS = ["click", "up", "left", "down", "right", "ability"]
+KEY_FUNCTIONS = ["click", "mouse_up", "up", "left", "down", "right", "ability"]
+
+''' Gameplay '''
 
 RUN_Y_OFFSET = {"orb_bunny":    [0, 1, 3, 1, 0, 1, 3, 1],
-                "nature_bunny": [0, 1, 2, 1, 0, 1, 2, 1]}
+                "nature_bunny": [0, 1, 2, 1, 0, 1, 2, 1],
+                "angel_bunny":  [0, 1, 2, 1, 0, 1, 2, 1],
+                "shadow_bunny": [0, 1, 3, 1, 0, 1, 3, 1]}
+
+# BALANCING STATS
+# health - health
+# normal_attack_damage - damage dealt per each normal attack hit
+# total_ability_charge - total damage needed to deal to charge up super ability
+
+BUNNY_STATS = {"orb_bunny":    {"health": 5200,
+                                "normal_attack_damage": 1000,
+                                "total_ability_charge": 10000},
+               "nature_bunny": {"health": 7400,
+                                "normal_attack_damage": 600,
+                                "total_ability_charge": 6000},
+               "shadow_bunny": {"health": 6200,
+                                "normal_attack_damage": 1200,
+                                "total_ability_charge": 7000,
+                                "ability_time": 6},
+               "angel_bunny":  {"health": 4200,
+                                "normal_attack_scaling": 100, # the damage is calculated by orb_radius * normal_attack_scaling
+                                "total_ability_charge": 7000,
+                                "projectile_speed": 3}
+}
+
+# total players for each game. Must be even number
+TOTAL_PLAYERS = 4
+
+# the least amount of time interval that the same attack can deal damage to the same enemy
+MIN_ATTACK_INTERVAL = 0.5
+
+# number of seconds to wait before respawning
+RESPAWN_WAIT_TIME = 4
+
+
+
 # network inputs for gameplay gamestate
 
 # TBD names

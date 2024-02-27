@@ -89,16 +89,18 @@ class Gameplay():
 
     def init_character_selections(self, selection_map):
         self.players = {}
+
+        # correct order
         # self.players[selection_map[0]] = OrbBunny()
         # self.players[selection_map[1]] = NatureBunny()
         # self.players[selection_map[2]] = AngelBunny()
         # self.players[selection_map[3]] = NinjaBunny()
 
         # testing
-        self.players[selection_map[0]] = OrbBunny()
-        self.players[selection_map[1]] = OrbBunny()
-        self.players[selection_map[2]] = NatureBunny()
-        self.players[selection_map[3]] = OrbBunny()
+        self.players[selection_map[0]] = NatureBunny()
+        self.players[selection_map[1]] = ShadowBunny()
+        self.players[selection_map[2]] = OrbBunny()
+        self.players[selection_map[3]] = AngelBunny()
 
     def update(self, data, client_address):
         if not data:
@@ -113,13 +115,16 @@ class Gameplay():
 
         # get collision boxes to pass into player update later
         map_obj_collision_boxes = self.map.get_neighbouring_chunk_data(player.x, player.y, "map_obj_collision_boxes")
+        map_obj_hitboxes = self.map.get_neighbouring_chunk_data(player.x, player.y, "map_obj_hitboxes")
+
+        if player_number > TOTAL_PLAYERS // 2: # player is in red team
+            enemies = [self.players[i] for i in range(1, TOTAL_PLAYERS // 2 + 1)] # +1 because self.players is a dictionary with one indexing
+        else:
+            enemies = [self.players[i] for i in range(TOTAL_PLAYERS // 2 + 1, TOTAL_PLAYERS + 1)]
 
         # update player with input received from client and map objects
-        player.update(message, map_obj_collision_boxes)
+        player.update(message, map_obj_collision_boxes, map_obj_hitboxes, enemies)
 
-        # if player_number == 4:
-        #     print(message)
-        #
         # print(self.players[player_number].x, self.players[player_number].y)
 
     def broadcast(self, client_address):

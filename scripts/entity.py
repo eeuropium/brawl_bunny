@@ -3,6 +3,7 @@ from scripts.core_funcs import *
 from scripts.animation import *
 from scripts.managers import *
 from scripts.orbs import Orbs # for Orb Bunny
+import cmath # for Orb Bunny complex numbers
 
 ''' Character States '''
 
@@ -122,12 +123,34 @@ class Bunny():
         self.direction = pygame.math.Vector2()
         self.x_direction = 1 # 1 for facing right, -1 for facing left
 
-        ''' Hitbox '''
-        self.collision_box_x_offset, self.collision_box_y_offset, hitbox_width, hitbox_height = get_box(f"box/collision_box/entities/{name}_collision_box.png")
-        self.collision_box = pygame.FRect(MID_X, MID_Y, hitbox_width, hitbox_height) # placeholder for start_x, start_y
+        self.RESPAWN_X = MID_X
+        self.RESPAWN_Y = MID_Y
+
+        ''' Boxes '''
+        self.collision_box_x_offset, self.collision_box_y_offset, self.org_collision_box_width, self.org_collision_box_height = get_box(f"box/collision_box/entities/{self.name}_collision_box.png")
+        self.collision_box = pygame.FRect(self.RESPAWN_X, self.RESPAWN_Y, self.org_collision_box_width, self.org_collision_box_height) # placeholder for start_x, start_y
+
+        self.hitbox_x_offset, self.hitbox_y_offset, self.org_hitbox_width, self.org_hitbox_height = get_box(f"box/hitbox/entities/{self.name}_hitbox.png")
+        self.hitbox = pygame.FRect(self.RESPAWN_X, self.RESPAWN_Y, self.org_hitbox_width, self.org_hitbox_height) # placeholder for start_x, start_y
+
+        ''' Attacking '''
+        self.last_hit_timers = [Timer() for i in range(TOTAL_PLAYERS // 2)] # this is the number of enemies
+
+        for timer in self.last_hit_timers:
+            timer.start() # start all the timers.
+            # This assumes that the first latest hit is the time when the game starts which is long enough before the first hit to cause any impact on the gameplay
 
         ''' Networking '''
         self.frame_index = 0
+
+        ''' Health '''
+        self.TOTAL_HEALTH = BUNNY_STATS[self.name]["health"]
+        self.health = self.TOTAL_HEALTH # start with full health
+        self.respawn_timer = LimitTimer(RESPAWN_WAIT_TIME)
+
+        ''' Ability '''
+        self.ability_charge = 0 # starts with 0 ability charged
+        self.TOTAL_ABILITY_CHARGE = BUNNY_STATS[self.name]["total_ability_charge"]
 
     def change_state(self, state):
         self.state = state
@@ -137,13 +160,14 @@ class Bunny():
         self.hand_state = hand_state
         self.hand_state.animation.reset()
 
-    # def update(self, client_message, map_obj_collision_boxes):
-    def update(self, input_message, map_obj_collision_boxes):
+    def update(self, input_message, map_obj_collision_boxes, map_obj_hitboxes, enemies):
+        ''' Inputs / Controls '''
         # give meaningful names to user message string
         self.controls = {}
 
         # "mouse_coor" - list containing two elements, x and y coordinates of mouse
         # "click" - 0 or 1 indiciating if mouse is clicked
+        # "mouse_up" - 0 or 1 indicating if mouse is lifted
         # "up" - W key pressed
         # "left" - A key pressed
         # "down" - S key pressed
@@ -159,6 +183,18 @@ class Bunny():
 
         for index, key_function in enumerate(KEY_FUNCTIONS):
             self.controls[key_function] = bool(int(key_inputs[index]))
+
+        ''' Respawn '''
+        if self.respawn_timer.is_active() and self.respawn_timer.is_over():
+            self.respawn_timer.end()
+            self.health = self.TOTAL_HEALTH
+
+            # collision box coordinates determines self.x, self.y and hitbox coordinates so we reset this to reset all of them
+            self.collision_box = pygame.FRect(self.RESPAWN_X, self.RESPAWN_Y, self.org_collision_box_width, self.org_collision_box_height)
+
+            # turn on back the hitbox
+            self.hitbox.width = self.org_hitbox_width
+            self.hitbox.height = self.org_hitbox_height
 
         ''' Movement '''
         # similar to legend of zelda youtube tutorial
@@ -204,10 +240,13 @@ class Bunny():
                 elif self.direction.y < 0: # moving up
                     self.collision_box.top = collision_box.bottom
 
-        # update positions for displaying character
+        # update positions for displaying character (this is the center position)
         self.x = self.collision_box.left - self.collision_box_x_offset + 16
         self.y = self.collision_box.top - self.collision_box_y_offset + 16
 
+        # update positions for hitbox
+        self.hitbox.left = self.collision_box.left - self.collision_box_x_offset + self.hitbox_x_offset
+        self.hitbox.top = self.collision_box.top - self.collision_box_y_offset + self.hitbox_y_offset
 
         # determine animation direction with mouse position
         if self.controls["mouse_pos"].x < MID_X:
@@ -216,6 +255,7 @@ class Bunny():
             self.x_direction = 1
 
         ''' Animation '''
+        # responsible for updating the frame index of idle or running animation
 
         # # check if have to change from current state to new state
         self.state.determine_state()
@@ -223,74 +263,105 @@ class Bunny():
         # # updates image (frame index sent to client) and direction
         self.state.update()
 
+    # called by inherrited classes to deal damage to enemies
+    def damage_update(self, index, enemy, attack_hit_enemy: bool, damage_value):
+        # no collision detected, so no damage will be dealt. We return the function.
+        if not attack_hit_enemy:
+            return
+
+        # check if time since last hit is long enough for another different attack to hit
+        if self.last_hit_timers[index].time_elapsed() >= MIN_ATTACK_INTERVAL:
+            enemy.take_damage(damage_value)
+
+            # update ability charge
+            self.ability_charge += damage_value
+            self.ability_charge = min(self.ability_charge, self.TOTAL_ABILITY_CHARGE) # cap the ability charge at max
+
+            # update last hit timers
+            self.last_hit_timers[index].restart()
+
+    def take_damage(self, damage):
+        self.health -= damage
+        self.health = max(0, self.health) # make sure health does not go below 0 (negative)
+
+        if self.health == 0:
+            self.respawn_timer.start()
+
+            # turn off hitbox
+            self.hitbox.width = 0
+            self.hitbox.height = 0
+
     def get_server_send_message(self):
+        # get prefixes
         character_prefix = NAME_PREFIX_MAP[self.name]
 
         character_state_prefix = CHARACTER_STATE_PREFIX_MAP[self.state.__class__.__name__.lower()]
 
+        # change x_direction to a 0 or 1 boolean
         if self.x_direction == 1:
             flip_sprite = 0
         else:
             flip_sprite = 1
 
-        #         (character type)        (coordinates)                  (state)           (frame number)  (horizontal flip)
-        return f"{character_prefix},{int(self.x)},{int(self.y)},{character_state_prefix},{self.frame_index},{flip_sprite}"
+        # character is dead and currently waiting to respawn
+        if self.respawn_timer.is_active():
+             # we send negative of the number of seconds left to wait. Cap it at 0 (can't go more than 0)
+            health_data = min(0, -int(RESPAWN_WAIT_TIME - self.respawn_timer.time_elapsed()))
+            # negative allows us to distinguish if it is the health (positive) or a timer time (negative)
+        else:
+            health_data = self.health
 
-    def get_display_coords(self, offset_x, offset_y):
-        return (int(self.x) + offset_x, int(self.y) + offset_y)
+        #         (character type)        (coordinates)                  (state)           (frame number)  (horizontal flip) (health / respawn time)  (ability charge)
+        return f"{character_prefix},{int(self.x)},{int(self.y)},{character_state_prefix},{self.frame_index},{flip_sprite},{health_data},{self.ability_charge}"
 
-    def display(self, screen, offset_x, offset_y):
-        # calculate the display coordinates
-        display_x, display_y = self.get_display_coords(offset_x, offset_y)
-
-        # display character
-        screen.blit(self.image, (display_x, display_y))
-
-        # for box in self.debug:
-        #     pygame.draw.rect(screen, (255, 0, 0), (box.left + offset_x, box.top + offset_y, box.width, box.height))
-
-        # left, top, width, height = self.collision_box
-        # left += offset_x
-        # top += offset_y
-        # pygame.draw.rect(screen, (0, 255, 0), (left, top, width, height))
-
-    def get_bottom_y(self):
-        return self.collision_box.bottom
+    # def get_display_coords(self, offset_x, offset_y):
+    #     return (int(self.x) + offset_x, int(self.y) + offset_y)
+    #
+    # def display(self, screen, offset_x, offset_y):
+    #     # calculate the display coordinates
+    #     display_x, display_y = self.get_display_coords(offset_x, offset_y)
+    #
+    #     # display character
+    #     screen.blit(self.image, (display_x, display_y))
+    #
+    #     # for box in self.debug:
+    #     #     pygame.draw.rect(screen, (255, 0, 0), (box.left + offset_x, box.top + offset_y, box.width, box.height))
+    #
+    #     # left, top, width, height = self.collision_box
+    #     # left += offset_x
+    #     # top += offset_y
+    #     # pygame.draw.rect(screen, (0, 255, 0), (left, top, width, height))
+    #
+    # def get_bottom_y(self):
+    #     return self.collision_box.bottom
 
 class OrbBunny(Bunny):
     def __init__(self):
         super().__init__("orb_bunny")
 
         ''' Hand '''
-        self.hand_sprites = load_spritesheet(load_image(f"bunny/{self.name}/{self.name}_hands.png"), 32, 32)
         self.hand_angles = [90, 60, 30, 0, -15, -45, -75, -90]
 
-        self.hand_images = {}
-
-        for index, angle in enumerate(self.hand_angles):
-            self.hand_images[angle] = self.hand_sprites[index]
-
-        # initialise starting hand frame index
+        # initialise starting hand frame index at 0 degrees
         self.hand_frame_index = 3
-
-        self.run_state.set_y_offsets([0, 1, 3, 1, 0, 1, 3, 1])
 
         ''' Orbs '''
 
         self.NUMBER_OF_ORBS = 5
+        self.ATTACK_RANGE = 100
 
         self.orbs = Orbs(self.NUMBER_OF_ORBS)
         self.orbs_list = [] # list storing position of orbs (includes attacking orb position)
         self.attack_orb_index = -1 # -1 if no orb is used in attack currently
 
-        self.orb_targets = [None for i in range(self.NUMBER_OF_ORBS)]
-        self.orb_timers = [Timer() for i in range(self.NUMBER_OF_ORBS)]
-
-        self.attack_timer = Timer()
         self.TOTAL_ATTACK_TIME = 1.5
 
+        self.orb_targets = [None for i in range(self.NUMBER_OF_ORBS)]
+        self.orb_timers = [LimitTimer(self.TOTAL_ATTACK_TIME) for i in range(self.NUMBER_OF_ORBS)]
+
+
     def orb_ease(self, x):
-        return -4 * (x - 0.5) * (x - 0.5) + 1
+        return -4 * (x - 0.5) * (x - 0.5) + 1 # upside down quadratic, peak at x = 0.5
 
     def find_closest_angle(self, angle, available_angles):
         min_diff = 180 # initialise to greatest possible
@@ -304,8 +375,8 @@ class OrbBunny(Bunny):
 
         return closest_angle
 
-    def update(self, inputs, map_obj_collision_boxes):
-        super().update(inputs, map_obj_collision_boxes)
+    def update(self, inputs, map_obj_collision_boxes, map_obj_hitboxes, enemies):
+        super().update(inputs, map_obj_collision_boxes, map_obj_hitboxes, enemies)
 
         ''' Hand '''
         # calculate angle in radians
@@ -328,56 +399,75 @@ class OrbBunny(Bunny):
 
         self.orbs_list = self.orbs.get_info()
 
-        # normal attack
-
-        # if not self.attack_timer.is_active() and self.controls["click"]:
-        #     best_dist = 1e9
-        #
-        #     # mouse pos is only relative to the screen. To make it relative to the world map, we minus MID position and add the player's position vectords
-        #     self.target_pos = self.controls["mouse_pos"] - pygame.math.Vector2(MID_X, MID_Y) + pygame.math.Vector2(self.x, self.y)
-        #
-        #     for index, (x, y, radius) in enumerate(self.orbs_list):
-        #         idle_pos = pygame.math.Vector2(x, y)
-        #         cur_dist = self.target_pos.distance_to(idle_pos)
-        #
-        #         if cur_dist < best_dist:
-        #             self.attack_orb_index = index
-        #             best_dist = cur_dist
-        #
-        #     self.attack_timer.start()
+        ''' Normal Attack '''
 
         # checks if any orb (ammo) is available
         if any([target_pos == None for target_pos in self.orb_targets]) and self.controls["click"]:
             best_dist = 1e9
 
             # mouse pos is only relative to the screen. To make it relative to the world map, we minus MID position and add the player's position vectords
-            self.target_pos = self.controls["mouse_pos"] - pygame.math.Vector2(MID_X, MID_Y) + pygame.math.Vector2(self.x, self.y)
+            shoot_vec = self.controls["mouse_pos"] - pygame.math.Vector2(MID_X, MID_Y)
 
-            # selecting the orb closest to the clicked position
-            for index, (x, y, radius) in enumerate(self.orbs_list):
+            if shoot_vec.magnitude() != 0: # check if can normalize
 
-                # don't allow orbs that are currently used in attack to be selected
-                if self.orb_targets[index] != None:
-                    continue
+                # times by range allows constant range for the attacks
+                self.target_pos = shoot_vec.normalize() * self.ATTACK_RANGE + pygame.math.Vector2(self.x, self.y)
 
-                idle_pos = pygame.math.Vector2(x, y)
-                cur_dist = self.target_pos.distance_to(idle_pos)
+                # selecting the orb closest to the clicked position
+                for index, (x, y, radius) in enumerate(self.orbs_list):
 
-                if cur_dist < best_dist:
-                    attack_orb_index = index
-                    best_dist = cur_dist
+                    # don't allow orbs that are currently used in attack to be selected
+                    if self.orb_targets[index] != None:
+                        continue
 
-            # choose the closest orb as the attacking orb
-            self.orb_timers[attack_orb_index].start()
-            self.orb_targets[attack_orb_index] = self.target_pos
+                    idle_pos = pygame.math.Vector2(x, y)
+                    cur_dist = self.target_pos.distance_to(idle_pos)
 
+                    if cur_dist < best_dist:
+                        attack_orb_index = index
+                        best_dist = cur_dist
+
+                # choose the closest orb as the attacking orb
+                self.orb_timers[attack_orb_index].start()
+                self.orb_targets[attack_orb_index] = self.target_pos
+
+        ''' Ability Attack '''
+
+           # checks that ability is charged and can be used         # check that all orbs are not used in an attack                # checks that ability control is pressed
+        if self.ability_charge == self.TOTAL_ABILITY_CHARGE and all([target_pos == None for target_pos in self.orb_targets]) and self.controls["ability"]:
+            # reset ability charge
+            self.ability_charge = 0
+
+            # the direction of the orbs is determined by the mouse position
+            z_vec = self.controls["mouse_pos"] - pygame.math.Vector2(MID_X, MID_Y)
+
+            if z_vec.magnitude() != 0:  # check if can normalize
+                z_vec = z_vec.normalize() * 1e10 # scale up the z_vec so effect is noticeable
+
+                z = complex(z_vec.x, z_vec.y)
+                n = self.NUMBER_OF_ORBS
+
+                # calculate the nth roots of unity
+                roots_of_unity = [cmath.exp(2j * cmath.pi * k / n) for k in range(n)]
+
+                # calculate the complex roots of z
+                complex_roots = [z ** (1/n) * root for root in roots_of_unity]
+
+                # use the complex roots to determine target position of the orbs
+                self.orb_targets = [pygame.math.Vector2(root.real + self.x, root.imag + self.y) for root in complex_roots]
+
+                for orb_timer in self.orb_timers:
+                    orb_timer.start()
+
+        ''' Update Orbs '''
 
         # calculate position of all orbs
         for orb_index in range(self.NUMBER_OF_ORBS):
             orb_timer = self.orb_timers[orb_index]
 
+            # check if attacking of orb is over. If it is, reset to idle state.
             if orb_timer.is_active():
-                if orb_timer.time_elapsed() >= self.TOTAL_ATTACK_TIME:
+                if orb_timer.is_over():
                     self.orb_targets[orb_index] = None
                     self.orb_timers[orb_index].end()
 
@@ -386,15 +476,38 @@ class OrbBunny(Bunny):
             idle_pos = pygame.math.Vector2(x, y)
 
             if orb_timer.is_active():
-                t = self.orb_ease(orb_timer.time_elapsed() / self.TOTAL_ATTACK_TIME)
+                # t = self.orb_ease(orb_timer.time_elapsed() / self.TOTAL_ATTACK_TIME)
+                t = orb_timer.get_t_value()
+                lerp = self.orb_ease(orb_timer.get_t_value())
 
                 # caluclate new position
-                new_x, new_y = t * (self.orb_targets[orb_index]) + (1 - t) * idle_pos
+                new_x, new_y = lerp * (self.orb_targets[orb_index]) + (1 - lerp) * idle_pos
+
+                # check for collision. If collided, the orb bounces back
+                SIDE_LENGTH = 6
+                orb_collision_box = pygame.FRect(new_x - SIDE_LENGTH // 2, new_y - SIDE_LENGTH // 2, SIDE_LENGTH, SIDE_LENGTH)
+
+                rebound = False # make the orb travel back to the player if something is hit
+
+                # rebound if hit map obstacles
+                for hitbox in map_obj_hitboxes:
+                    if orb_collision_box.colliderect(hitbox):
+                        rebound = True
+
+                # deal damage to enemies
+                for index, enemy in enumerate(enemies):
+                    self.damage_update(index, enemy, orb_collision_box.colliderect(enemy.hitbox), BUNNY_STATS[self.name]["normal_attack_damage"])
+
+                # rebound if hit enemies
+                for enemy in enemies:
+                    if orb_collision_box.colliderect(enemy.hitbox):
+                        rebound = True
+
+                if rebound and t < 0.5:
+                    orb_timer.set_t_value(1 - t) # symetrically reflect t-value over t = 0.5, the peak so the orb bounces back
 
                 # update orbs list with new calculated orb position for the attacking orb
-                self.orbs_list[orb_index] = (new_x, new_y, 5)
-
-
+                self.orbs_list[orb_index] = (new_x, new_y, 5) # attacking orb has constant radius
 
     def get_server_send_message(self):
         s = super().get_server_send_message()
@@ -444,8 +557,8 @@ class NatureBunny(Bunny):
     def vine_ease(self, x):
         return -(x-1)**3
 
-    def update(self, inputs, map_obj_collision_boxes):
-        super().update(inputs, map_obj_collision_boxes)
+    def update(self, inputs, map_obj_collision_boxes, map_obj_hitboxes, enemies):
+        super().update(inputs, map_obj_collision_boxes, map_obj_hitboxes, enemies)
 
         ''' update vines '''
 
@@ -486,9 +599,20 @@ class NatureBunny(Bunny):
         if mouse_x < MID_X:
             lx = int(mouse_x - MID_X + self.x)
             ly = int(mouse_y - MID_Y + self.y)
+
+            hit_x, hit_y = lx, ly
         else:
             rx = int(mouse_x - MID_X + self.x)
             ry = int(mouse_y - MID_Y + self.y)
+
+            hit_x, hit_y = rx, ry
+
+        # deal damage to enemies
+        if self.attack_timer.is_active(): # if currently in attack
+            for index, enemy in enumerate(enemies):
+                self.damage_update(index, enemy, enemy.hitbox.clipline(self.x, self.y, hit_x, hit_y), BUNNY_STATS[self.name]["normal_attack_damage"])
+                                                 # check if the line (connecting the start and endpoint of the Bezier curves) intersect / collide with enemy hitbox
+
 
         self.vine_lx, self.vine_ly, self.vine_rx, self.vine_ry = lx, ly, rx, ry
 
@@ -504,25 +628,31 @@ class AngelBunny(Bunny):
         super().__init__("angel_bunny")
 
         ''' Hand '''
-        self.hand_layer = ChangingLayer()
-
         self.hand_state = "idle"
+        # possible hand states are
+        # idle - when the character's hand is not attacking. Either the idle or run hand animation can be playing
+        # charge - when the character is charging up the attack
+        # release - when the character shoots the attack
 
-        self.hand_animations = {
-        "idle" : Animation(f"bunny/{self.name}/{self.name}_idle_hands.png", 32, 32),
-        "run": Animation(f"bunny/{self.name}/{self.name}_run_hands.png", 32, 32)
-        }
+        self.hand_prefix = ANGEL_BUNNY_HAND_STATE_PREFIX_MAP["idle"]
+        self.hand_frame_index = 0
 
-        self.idle_hand_animation = Animation(f"bunny/{self.name}/{self.name}_idle_hands.png", 32, 32)
-        self.run_hand_animation = Animation(f"bunny/{self.name}/{self.name}_run_hands.png", 32, 32)
-        self.charge_hand_animation = Animation(f"bunny/{self.name}/{self.name}_charge_hands.png", 32, 32)
-        self.release_hand_animation = Animation(f"bunny/{self.name}/{self.name}_release_hands.png", 32, 32)
+        self.hand_timer = Timer()
+        self.hand_timer.start()
 
-        self.transitions = {"idle" : {"run" : "self.hand_idle_to_run()"},
-                            "run": {"idle" : "self.hand_run_to_idle()"}
-                            }
+        ''' Attack '''
 
-        self.run_state.set_y_offsets([0, 1, 2, 1, 0, 1, 2, 1])
+        self.ORB_CHARGE_RATE = 4 # per second
+
+        self.orb_timer = Timer()
+        self.orb_vec = pygame.math.Vector2(0, 0)
+
+        self.orb_radius = 0
+        self.orb_pos = pygame.math.Vector2(self.x, self.y)
+
+        self.orb_alive = False # checks if the orb projectile still exists
+
+        self.orb_y_offset = 2
 
     def hand_idle_to_run(self):
         return self.state == self.run_state
@@ -530,65 +660,193 @@ class AngelBunny(Bunny):
     def hand_run_to_idle(self):
         return self.state == self.idle_state
 
-    def update(self, inputs, map_obj_collision_boxes):
-        # super().update(inputs, map_obj_collision_boxes)
+    def update(self, inputs, map_obj_collision_boxes, map_obj_hitboxes, enemies):
+        super().update(inputs, map_obj_collision_boxes, map_obj_hitboxes, enemies)
 
-        for new_state, condition_function in self.transitions[self.hand_state].items():
-            if eval(condition_function):
-                self.hand_state = new_state
+        self.hand_frame_index = int(self.hand_timer.time_elapsed() // FRAME_INTERVAL)
 
-        self.hand_layer.update(self.hand_animations[self.hand_state].get_frame(), self.x_direction, self.state)
+        ''' (Hand) and Attack State Transitions '''
 
-        super().update(inputs, map_obj_collision_boxes)
+        # changing from idle / run to charging         # don't allow attack if orb is still present in the game (there can only be one orb existing at any time)
+        if self.hand_state == "idle" and self.controls["click"] and not self.orb_alive:
+            self.hand_state = "charge"
+            self.hand_timer.restart()
+            self.hand_frame_index = 0
 
-    def display(self, screen, offset_x, offset_y):
-        display_x, display_y = self.get_display_coords(offset_x, offset_y)
+            # start orb timer
+            self.orb_timer.start()
 
-        # display body
-        super().display(screen, offset_x, offset_y)
+            # reset orb position
+            self.orb_pos = pygame.math.Vector2(self.x, self.y + self.orb_y_offset)
 
-        # display hand
-        self.hand_layer.display(screen, display_x, display_y)
+        # changing from charge to release
+        elif self.hand_state == "charge" and  self.controls["mouse_up"]:
+            self.hand_state = "release"
+            self.hand_timer.restart()
+            self.hand_frame_index = 0
+
+            # orbs
+            self.orb_vec = self.controls["mouse_pos"] - pygame.math.Vector2(MID_X, MID_Y)
+
+            if self.orb_vec.magnitude() != 0:
+                self.orb_vec = self.orb_vec.normalize() * BUNNY_STATS["angel_bunny"]["projectile_speed"]
+
+            self.orb_timer.end()
+            self.orb_alive = True
+
+        # changing from release to idle / run
+        elif self.hand_state == "release" and self.hand_frame_index >= 5:
+            self.hand_state = "idle"
+            self.hand_timer.restart()
+            self.hand_frame_index = 0
+
+        ''' Hand State Frames '''
+
+        if self.hand_state == "idle": # can either be idle or run hands
+
+            if self.state == self.idle_state:
+                self.hand_frame_index = 0 # idle has only 1 frame
+                self.hand_prefix = ANGEL_BUNNY_HAND_STATE_PREFIX_MAP["idle"]
+
+            elif self.state == self.run_state:
+                self.hand_frame_index %= 8 # running animation has 8 frames in total
+                self.hand_prefix = ANGEL_BUNNY_HAND_STATE_PREFIX_MAP["run"]
+
+        elif self.hand_state == "charge":
+            self.hand_frame_index = min(self.hand_frame_index, 3) # charge animation has 4 frames in total. Since 0-indexing is used, maximum is index 3.
+            self.hand_prefix = ANGEL_BUNNY_HAND_STATE_PREFIX_MAP["charge"]
+
+        elif self.hand_state == "release":
+            self.hand_frame_index = min(self.hand_frame_index, 4) # release animation has 5 frames in total.
+            self.hand_prefix = ANGEL_BUNNY_HAND_STATE_PREFIX_MAP["release"]
+
+        ''' Attack '''
+
+        if self.orb_timer.is_active(): # still charging the orb
+            # calcualte orb radius
+            self.orb_radius = self.orb_timer.time_elapsed() * self.ORB_CHARGE_RATE
+
+            # calculate orb position to stay with the player
+            self.orb_pos = (self.x, self.y + self.orb_y_offset)
+
+        # update orb position by moving it in the firing direction
+        self.orb_pos += self.orb_vec
+
+        # create orb collision box
+        SIDE_LENGTH = int(self.orb_radius)
+        orb_collision_box = pygame.FRect(self.orb_pos.x - SIDE_LENGTH // 2, self.orb_pos.y - SIDE_LENGTH // 2, SIDE_LENGTH, SIDE_LENGTH)
+
+        # deal damage to enemies
+        for index, enemy in enumerate(enemies):
+            self.damage_update(index, enemy, orb_collision_box.colliderect(enemy.hitbox), int(self.orb_radius * BUNNY_STATS[self.name]["normal_attack_scaling"]))
+
+        # orb collision
+        orb_hit_object = False
+
+        # destroy orb if hit map obstacles
+        for hitbox in map_obj_hitboxes:
+            if orb_collision_box.colliderect(hitbox):
+                orb_hit_object = True
+
+        # destroy orb if hit enemies
+        for enemy in enemies:
+            if orb_collision_box.colliderect(enemy.hitbox):
+                orb_hit_object = True
+
+        # reset orb
+        if orb_hit_object:
+            self.orb_alive = False
+            self.orb_radius = 0
+
+
+    def get_server_send_message(self):
+        s = super().get_server_send_message()
+        #      (type of hand animation)   (frame)                   (orb position)               (orb radius)
+        s += f",{self.hand_prefix},{self.hand_frame_index},{int(self.orb_pos.x)},{int(self.orb_pos.y)},{self.orb_radius}"
+
+        return s
+
+    # def display(self, screen, offset_x, offset_y):
+    #     display_x, display_y = self.get_display_coords(offset_x, offset_y)
+    #
+    #     # display body
+    #     super().display(screen, offset_x, offset_y)
+    #
+    #     # display hand
+    #     self.hand_layer.display(screen, display_x, display_y)
 
 class ShadowBunny(Bunny):
     def __init__(self):
         super().__init__("shadow_bunny")
 
         ''' Sword '''
-        self.sword_layer = ChangingLayer(0, 0, -32, 0)
         self.sword_animation = SingleAnimation(f"bunny/{self.name}/{self.name}_sword.png", 64, 32)
+
         self.playing_sword_animation = False
+        self.sword_index = 0
 
-        self.run_state.set_y_offsets([0, 1, 3, 1, 0, 1, 3, 1])
+        ''' Ability '''
+        self.visible = True # bunny is not visible if in shadow realm AND not attacking
+        self.shadow_realm_timer = LimitTimer(BUNNY_STATS[self.name]["ability_time"])
 
-    def update(self, inputs, map_obj_collision_boxes):
-        super().update(inputs, map_obj_collision_boxes)
+
+    def update(self, inputs, map_obj_collision_boxes, map_obj_hitboxes, enemies):
+        super().update(inputs, map_obj_collision_boxes, map_obj_hitboxes, enemies)
 
         ''' Updating Sword Animation '''
 
         # only check if not currently playing animation
         if not self.playing_sword_animation:
-            self.sword_layer.update(self.sword_animation.get_first_frame(), self.x_direction, self.state)
+            self.sword_index = 0
 
             # check for input to start animation
-            for event in inputs["events"]:
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    self.playing_sword_animation = True
-                    self.sword_animation.start()
+            if self.controls["click"]:
+                self.playing_sword_animation = True
+                self.sword_animation.start()
+
         else:
-            self.sword_layer.update(self.sword_animation.get_frame(), self.x_direction, self.state)
+            self.sword_index = self.sword_animation.get_frame_index()
 
             if self.sword_animation.ended():
                 self.playing_sword_animation = False
 
-        self.sword_image = self.sword_animation.get_frame()
+
+        ''' Dealing Damage '''
+
+        if self.sword_index == 4: # damaging frame (frame number 4) Only can deal damage on this frame
+            # determine the hurtbox of the attack based on x direction
+            if self.x_direction == 1:
+                sword_hurtbox = pygame.Rect(self.x - 6, self.y - 6, 29, 15)
+            elif self.x_direction == -1:
+                sword_hurtbox = pygame.Rect(self.x + 6 - 29, self.y - 6, 29, 15)
+
+            # deal damage to enemies
+            for index, enemy in enumerate(enemies):
+                self.damage_update(index, enemy, sword_hurtbox.colliderect(enemy.hitbox), BUNNY_STATS[self.name]["normal_attack_damage"])
+
+        ''' Ability '''
+
+        # activating ability
+        if self.ability_charge == self.TOTAL_ABILITY_CHARGE and self.controls["ability"]:
+            self.shadow_realm_timer.start()
+            self.ability_charge = 0
+
+        # if ability is currently in use
+        if self.shadow_realm_timer.is_active():
+            # ending ability if time is over
+            if self.shadow_realm_timer.is_over():
+                self.shadow_realm_timer.end()
+                self.visible = True
+
+            # updating visibility
+            self.visible = self.playing_sword_animation
 
 
-    def display(self, screen, offset_x, offset_y):
-        display_x, display_y = self.get_display_coords(offset_x, offset_y)
+    def get_server_send_message(self):
+        s = super().get_server_send_message()
 
-        # display body
-        super().display(screen, offset_x, offset_y)
+        s += f",{self.sword_index},{int(self.visible)},{int(self.shadow_realm_timer.is_active())}"
+        # self.visible - visibility (for other players to determine if shadow bunny should be displayed)
+        # self.shadow_realm_timer.is_active() - checks if ability is used currently: for the shadow bunny player to use shadow realm
 
-        # display sword (and attached hand)
-        self.sword_layer.display(screen, display_x, display_y)
+        return s

@@ -22,10 +22,12 @@ class SimpleSprite():
         return self.y + self.y_offset
 
 class Circle():
-    def __init__(self, colour, coor, radius):
+    def __init__(self, colour, coor, radius, y_offset = 0):
         self.colour = colour
         self.x, self.y = coor
         self.radius = radius
+
+        self.y_offset = y_offset
 
 
     def display(self, screen, offset_x, offset_y):
@@ -33,7 +35,7 @@ class Circle():
         pygame.draw.circle(screen, self.colour, display_coor, self.radius)
 
     def get_bottom_y(self):
-        return self.y
+        return self.y + self.y_offset
 
 
 

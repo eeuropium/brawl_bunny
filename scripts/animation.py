@@ -2,7 +2,7 @@ from scripts.constants import *
 from scripts.core_funcs import *
 
 class Animation():
-    def __init__(self, spritesheet_path, frame_width, frame_height, frame_interval = 0.1):
+    def __init__(self, spritesheet_path, frame_width, frame_height, frame_interval = FRAME_INTERVAL):
 
         spritesheet_image = load_image(spritesheet_path)
 
@@ -26,8 +26,8 @@ class Animation():
         self.start_time = time.time()
 
 class SingleAnimation(Animation):
-    def __init__(self, spritesheet_path, frame_width, frame_height, frame_interval = 0.1):
-        super().__init__(spritesheet_path, frame_width, frame_height, frame_interval = 0.1)
+    def __init__(self, spritesheet_path, frame_width, frame_height, frame_interval = FRAME_INTERVAL):
+        super().__init__(spritesheet_path, frame_width, frame_height, frame_interval = FRAME_INTERVAL)
 
     def get_first_frame(self):
         return self.frames[0]

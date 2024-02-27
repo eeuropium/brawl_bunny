@@ -61,12 +61,6 @@ class Cards:
     def __init__(self, bunny_names):
         self.cards = [Card(bunny_name) for bunny_name in bunny_names]
 
-        # colours
-        self.MY_BLUE = (138, 236, 241)
-        self.NORMAL_BLUE = (40, 205, 223)
-        self.MY_RED = (230, 71, 46)
-        self.NORMAL_RED = (169, 59, 59)
-
         self.TOTAL_PLAYERS = 4
 
         # list to store text objects which display which player is selecting each character
@@ -120,16 +114,7 @@ class Cards:
                     continue
 
                 # assigning colour baesd on player number
-                if player_number == my_player_number: # my selection, so uses "my" colour
-                    if player_number <= self.TOTAL_PLAYERS // 2:
-                        colour = self.MY_BLUE
-                    else:
-                        colour = self.MY_RED
-                else:
-                    if player_number <= self.TOTAL_PLAYERS // 2:
-                        colour = self.NORMAL_BLUE
-                    else:
-                        colour = self.NORMAL_RED
+                colour = get_player_colour(player_number, my_player_number)
 
                 # assign text string (what string to display)
                 if player_number == my_player_number:
