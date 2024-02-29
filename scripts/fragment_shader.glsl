@@ -107,46 +107,80 @@ vec4 light_orb_shader(vec4 pixel_colour) {
     // distance from pixel to center of the light orb
     float dist = distance(coor, light_orb.xy);
 
+    // seeing the radius
+    // if (dist < light_orb.z) return vec4(0, 1, 0, 1);
+
+    return pixel_colour + 0.05 * light_orb.z / length(0.05 * dist);
+
     // pixel is greater than radius of orb, so we return
-    if (dist > light_orb.z) return pixel_colour;
+    // if (dist > light_orb.z) return pixel_colour + 0.02 * light_orb.z / length(0.05 * dist);
+    //
+    // vec3 col1 = vec3(244, 179, 27) / 255; // yellow
+    // vec3 col2 = vec3(223, 246, 245) / 255; // blue-white
+    //
 
-    vec3 col = vec3(223, 246, 245);
+    // vec3 orb_colour = mix(col1, col2, pow(dist / light_orb.z, 2));
+    //
+    // return vec4(mix(orb_colour, pixel_colour.rgb, 0.3), 1);
+    // the lower the value, the greater the proportion of orb_colour
 
-    float t = 1 - pow(dist / light_orb.z, 2);
-    if (t < 0.05) t = 1;
-
-    return mix(vec4(244, 179, 27, 255) / 255, vec4(col / 255, 1.0), t);
     // return vec4(mix(pixel_colour.rgb, vec3(244, 204, 161), 1 - alpha), 0);  // vec4(244, 204, 161, alpha);
 }
 
-vec4 light_beam_shader(vec4 pixel_colour) {
-    return pixel_colour;
 
+float shortest_distance_to_line_segment(vec2 point, vec2 segment_start, vec2 segment_end) {
+    vec2 segment = segment_end - segment_start;
+    float segment_length = length(segment);
+    vec2 segment_dir = segment / segment_length;
+
+    // Project the point onto the line segment
+    float t = dot(point - segment_start, segment_dir);
+    t = clamp(t, 0.0, segment_length);
+
+    // Calculate the closest point on the line segment
+    vec2 closest_point = segment_start + t * segment_dir;
+
+    // Calculate the distance between the point and the closest point on the line segment
+    float distance = length(point - closest_point);
+
+    return distance;
+}
+
+vec4 light_beam_shader(vec4 pixel_colour) {
     // calculate coordinates in the game using uvs
     vec2 coor = vec2(uvs.x * WIDTH, uvs.y * HEIGHT);
-
-    if (distance(coor, light_beam_start) < 40) return vec4(0, 1, 0, 1);
 
     // no light beam currently
     if (light_beam_start == vec2(-1, -1) && light_beam_end == vec2(-1, -1)) return pixel_colour;
 
-    float gradient = (light_beam_start.y - light_beam_end.y) / (light_beam_start.x - light_beam_end.x);
+    // drawing start and end points
+    // if (distance(coor, light_beam_start) < 5) return vec4(0, 1, 0, 1);
+    // if (distance(coor, light_beam_end) < 5) return vec4(0, 0, 1, 1);
 
-    if (gradient == 0) {
-        return pixel_colour;
+    float dist_to_line = shortest_distance_to_line_segment(coor, light_beam_start, light_beam_end);
+    float glow = 0.05 / length(0.05 * dist_to_line);
+
+    // pixel is part of the light beam
+    if (dist_to_line < 5) {
+        vec3 colour1 = vec3(244, 204, 161) / 255; // peach
+        vec3 colour2 = vec3(244, 179, 27) / 255; // yellow
+
+        float dist = distance(coor, light_beam_end);
+
+        // 0.5 * sin(val) + 0.5 shifts the sin value to be between 0 and 1
+        // vec3 beam_colour = vec3(mix(colour1, colour2, (0.5 * sin(0.3 * dist + 25 * time) + 0.5)));
+        vec4 beam_colour = vec4(mix(colour1, colour2, (0.5 * sin(0.3 * dist + 40 * time) + 0.5)), 1.0);
+
+        // for closer peaks, increase coefficient of dist
+        // for faster movement of peak, increase coefficient of time
+
+        return mix(beam_colour, pixel_colour, 0.2) + glow;
+        // 1.0 is fully pixel_colour
+        // 0.0 is fully beam_colour
     }
-    else {
-        float y = light_beam_start.y + (coor.x - light_beam_start.x) * gradient;
 
-        if (distance(vec2(coor.x, y), coor) <= 0.5) {
-            return vec4(1, 0, 0, 1);
-        }
-    }
+    return pixel_colour + glow;
 
-    return pixel_colour;
-    // sin(20 * uvs.y + 3 * time);
-
-// 378545
 }
 
 void main() {
@@ -169,3 +203,5 @@ void main() {
     // vec2 sample_pos = vec2(uvs.x + sin(uvs.y * 10 + time * 0.01) * 0.1, uvs.y);
     // f_color = vec4(texture(tex, sample_pos).rg, texture(tex, sample_pos).b * 1.5, 1.0);
 }
+
+// 378545

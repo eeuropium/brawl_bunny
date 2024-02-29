@@ -68,6 +68,10 @@ class Shader():
         self.program["use_shadow_realm_shader"] = self.shader_data["use_shadow_realm_shader"]
 
         # orb bunny orbs
+
+        # pad the orbs_data list to make it length 20 so it can be passed into the shader program
+        self.shader_data["orbs_data"].extend([(0.0, 0.0, 0.0) for i in range(20 - len(self.shader_data["orbs_data"]))])
+        assert len(self.shader_data["orbs_data"]) == 20
         self.program["orbs_data"] = self.shader_data["orbs_data"]
 
         # angel bunny light orb

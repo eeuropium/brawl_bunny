@@ -61,7 +61,11 @@ class Map:
 
         tile_images = load_spritesheet(load_image("map_assets/tiles.png"), TILE_SIZE, TILE_SIZE)
         num_tiles = len(tile_images)
-        self.tile_dict = {i + 1 : tile_images[i] for i in range(num_tiles)}
+
+        if USE_MAP == 3:
+            self.tile_dict = {i + 157: tile_images[i] for i in range(num_tiles)}
+        else:
+            self.tile_dict = {i + 1: tile_images[i] for i in range(num_tiles)}
 
         ''' Object Dicts '''
 
@@ -70,7 +74,10 @@ class Map:
 
             object_name = file_name[:-4] # -4 to take away ".png"
 
-            self.id_to_name[num_tiles + index + 1] = object_name # assign ID
+            if USE_MAP == 3:
+                self.id_to_name[index + 117] = object_name # assign ID
+            else:
+                self.id_to_name[num_tiles + index + 1] = object_name # assign ID
 
             self.object_surf[object_name] = load_image(f"map_assets/objects/{file_name}")
 
@@ -112,6 +119,9 @@ class Map:
                     for cur_col in range(columns):
                         # formula to calculate index since layer_data is a 1D array
                         tile_id = layer_data[cur_row * columns + cur_col]
+
+                        # print(tile_id)
+
                         # converting layer_data to 2D array would be more inefficient
 
                         # no tiles at current position

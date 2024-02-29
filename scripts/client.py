@@ -19,7 +19,8 @@ class Client():
         self.mac_address = getnode()
 
         # for testing
-        self.mac_address = random.randint(0, 1e6)
+        self.mac_address = random.randint(0, int(1e6))
+         # 1e6 is a float and some older python versions cannot do the randrange on a float so we convert it to int
 
     def run_receive(self):
         receiving_thread = threading.Thread(target = self.receive, daemon = True)

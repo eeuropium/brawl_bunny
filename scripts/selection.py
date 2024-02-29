@@ -85,12 +85,11 @@ class Cards:
             if card.is_clicked(inputs["events"]):
                 select_index = index
 
-        # testing
+        # testing (auto-selection)
         # return f"{player_number}:{player_number - 1}"
 
         # actual
         return f"{player_number}:{select_index}"
-
 
     def update(self, message, my_player_number): # server message
 
@@ -98,7 +97,6 @@ class Cards:
 
         # server has non-empty message
         if message:
-
             # get data of all clients from server
             client_data = message.split(',')
 

@@ -85,7 +85,22 @@ class CharacterSelection():
 class Gameplay():
     def __init__(self, server):
         self.server = server
-        self.map = Map("map2.json")
+
+        if USE_MAP == 3:
+            self.map = Map("map3.json")
+        else:
+            self.map = Map("map2.json")
+
+        ''' Match Data '''
+        self.match_timer = LimitTimer(MATCH_DURATION)
+        self.match_timer.start()
+
+        self.respawn_timers = [LimitTimer(RESPAWN_WAIT_TIME + 1) for i in range (TOTAL_PLAYERS)]
+
+        self.blue_score = 0
+        self.red_score = 0
+
+        self.match_end_timer = LimitTimer(MATCH_END_WAIT_TIME)
 
     def init_character_selections(self, selection_map):
         self.players = {}
@@ -102,8 +117,11 @@ class Gameplay():
         # self.players[selection_map[2]] = OrbBunny()
         # self.players[selection_map[3]] = AngelBunny()
 
+    def get_match_ended(self):
+        return self.blue_score == KILLS_TO_WIN or self.red_score == KILLS_TO_WIN or self.match_timer.is_over()
+
     def update(self, data, client_address):
-        if not data:
+        if not data or self.get_match_ended():
             return
 
         # splitting up inputs
@@ -117,6 +135,7 @@ class Gameplay():
         map_obj_collision_boxes = self.map.get_neighbouring_chunk_data(player.x, player.y, "map_obj_collision_boxes")
         map_obj_hitboxes = self.map.get_neighbouring_chunk_data(player.x, player.y, "map_obj_hitboxes")
 
+        # get list of enemies
         if player_number > TOTAL_PLAYERS // 2: # player is in red team
             enemies = [self.players[i] for i in range(1, TOTAL_PLAYERS // 2 + 1)] # +1 because self.players is a dictionary with one indexing
         else:
@@ -125,16 +144,67 @@ class Gameplay():
         # update player with input received from client and map objects
         player.update(message, map_obj_collision_boxes, map_obj_hitboxes, enemies)
 
-        # print(self.players[player_number].x, self.players[player_number].y)
+        # calculate match score by checking if player has just died
+        respawn_timer = self.respawn_timers[player_number - 1]
+
+        if respawn_timer.is_active() and respawn_timer.is_over():
+            respawn_timer.end()
+
+        if not respawn_timer.is_active() and player.health == 0:
+            respawn_timer.start()
+
+            # check which team the player belongs to and inrcement the score of the opposite team
+            if player_number <= TOTAL_PLAYERS // 2: # blue died, red score increments
+                self.red_score += 1
+            else:
+                self.blue_score += 1 # red died, blue score increments
 
     def broadcast(self, client_address):
-        s = ""
+        if not self.match_end_timer.is_active():
+            s = ""
 
-        for player_number, player_object in self.players.items():
-            s += str(player_number) + ":" + player_object.get_server_send_message()
-            s += "|"
+            for player_number, player_object in self.players.items():
+                match_data = [player_number, self.blue_score, self.red_score, int(MATCH_DURATION - self.match_timer.time_elapsed())]
+                s += ','.join([str(e) for e in match_data]) + ":" + player_object.get_server_send_message()
+                s += "|"
 
-        self.server.send(s[:-1], client_address)
+
+            s = s[:-1] # remove the last "|" separator
+
+            if self.get_match_ended():
+                self.match_end_timer.start()
+        else:
+            s = f"ENDED,{self.blue_score},{self.red_score}"
+
+            if self.match_end_timer.is_over():
+                if self.blue_score == self.red_score:
+                    winning_team = "D" # D for draw
+                elif self.blue_score > self.red_score:
+                    winning_team = "B" # B for blue team
+                else:
+                    winning_team = "R" # R for red team
+
+                self.server.update_state(EndScreen)
+                self.server.state.init_result_prefix(winning_team)
+
+        self.server.send(s, client_address)
+
+class EndScreen():
+    def __init__(self, server):
+        self.next_state_timer = LimitTimer(1)
+        self.next_state_timer.start()
+
+        self.server = server
+
+    def init_result_prefix(self, prefix):
+        self.result_prefix = prefix
+
+    def update(self, data, client_address):
+        if self.next_state_timer.is_active() and self.next_state_timer.is_over():
+            self.server.update_state(MatchMaking)
+
+    def broadcast(self, client_address):
+        self.server.send(self.result_prefix, client_address)
 
 class Server():
     def __init__(self):
@@ -142,8 +212,6 @@ class Server():
         self.server_socket.bind((SERVER_IP, PORT))
 
         self.state = MatchMaking(self)
-        # self.state = Gameplay(self) # for testing
-
         self.state_prefix = STATE_PREFIX_MAP[self.state.__class__.__name__]
 
     def run(self):

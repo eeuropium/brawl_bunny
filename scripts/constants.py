@@ -40,6 +40,8 @@ TEAMMATE_RED = (169, 59, 59)
 TILE_SIZE = 16
 CHUNK_SIZE = 10
 
+USE_MAP = 2
+
 ''' Animation '''
 FRAME_INTERVAL = 0.1
 
@@ -50,7 +52,6 @@ FONT_10 = pygame.font.Font("data/cooper_black.ttf", 10)
 ''' Networking '''
 PORT = 9991
 
-# SERVER_IP = "192.168.0.5"
 hostname = socket.gethostname()
 server_ip = socket.gethostbyname(hostname)
 
@@ -63,10 +64,11 @@ SERVER_IP = "10.80.5.134"
 def reverse_map(map):
     return {v: k for k, v in map.items()}
 
-STATE_PREFIX_MAP = {"Menu":               "Z",
+STATE_PREFIX_MAP = {"Menu":               "Z", # doesn't matter since does not require server
                     "MatchMaking" :       "M",
                     "CharacterSelection": "C",
-                    "Gameplay":           "G"}
+                    "Gameplay":           "G",
+                    "EndScreen":          "E"}
 
 # character name to a character prefix
 NAME_PREFIX_MAP = {"orb_bunny":    "E",
@@ -94,6 +96,23 @@ INDEX_BUNNY_MAP = ["OrbBunny", "NatureBunny", "ShadowBunny", "AngelBunny"] # the
 KEY_ORDERS = "WASDE"
 KEY_FUNCTIONS = ["click", "mouse_up", "up", "left", "down", "right", "ability"]
 
+
+''' Match '''
+
+MATCH_TEXT_Y = 10
+
+# total players for each match. Must be an even number
+TOTAL_PLAYERS = 4
+
+MATCH_DURATION = 120 # in seconds
+
+# number of kills needed to end the match and win
+KILLS_TO_WIN = 7
+
+''' End Screen '''
+
+WIN_TEXT_Y = 20
+
 ''' Gameplay '''
 
 RUN_Y_OFFSET = {"orb_bunny":    [0, 1, 3, 1, 0, 1, 3, 1],
@@ -101,30 +120,42 @@ RUN_Y_OFFSET = {"orb_bunny":    [0, 1, 3, 1, 0, 1, 3, 1],
                 "angel_bunny":  [0, 1, 2, 1, 0, 1, 2, 1],
                 "shadow_bunny": [0, 1, 3, 1, 0, 1, 3, 1]}
 
+ANGEL_BUNNY_ATTACK_Y_OFFSET = 4 # y offset for where the attacks are released from
+
 # BALANCING STATS
 # health - health
 # normal_attack_damage - damage dealt per each normal attack hit
 # total_ability_charge - total damage needed to deal to charge up super ability
 
 BUNNY_STATS = {"orb_bunny":    {"health": 5200,
-                                "normal_attack_damage": 1000,
-                                "total_ability_charge": 10000},
-               "nature_bunny": {"health": 7400,
-                                "normal_attack_damage": 600,
-                                "total_ability_charge": 6000},
-               "shadow_bunny": {"health": 6200,
+                                "speed": 1.5,
+                                "normal_attack_damage": 500,
+                                "total_ability_charge": 4000},
+               "nature_bunny": {"health": 6800,
+                                "speed": 1.8,
                                 "normal_attack_damage": 1200,
-                                "total_ability_charge": 7000,
-                                "ability_time": 6},
+                                "attack_cooldown": 0.5,
+                                "total_ability_charge": 6000,
+                                "ability_time": 5,
+                                "hook_speed": 5,
+                                "hook_range": 130},
                "angel_bunny":  {"health": 4200,
-                                "normal_attack_scaling": 100, # the damage is calculated by orb_radius * normal_attack_scaling
-                                "total_ability_charge": 7000,
+                                "speed": 1.5,
+                                "normal_attack_scaling": 500, # the damage is calculated by orb_radius * normal_attack_scaling
+                                "radius_charge_rate": 1, # increase in radius per second
+                                "max_radius": 6, # maximum radius of the projectile
+                                "total_ability_charge": 3000,
                                 "projectile_speed": 3,
-                                "max_range": 120}
+                                "max_range": 120,
+                                "ability_time": 5,
+                                "ability_damage": 800}, # damage is dealt every MIN_ATTACK_INTERVAL
+               "shadow_bunny": {"health": 6200,
+                                "speed": 1.5,
+                                "normal_attack_damage": 1300,
+                                "total_ability_charge": 7000,
+                                "ability_time": 6}
 }
 
-# total players for each game. Must be even number
-TOTAL_PLAYERS = 4
 
 # the least amount of time interval that the same attack can deal damage to the same enemy
 MIN_ATTACK_INTERVAL = 0.5
@@ -132,7 +163,11 @@ MIN_ATTACK_INTERVAL = 0.5
 # number of seconds to wait before respawning
 RESPAWN_WAIT_TIME = 4
 
+# number of seconds to wait after match ended before moving to the end screen state
+MATCH_END_WAIT_TIME = 3
 
+# number of seconds to wait before exit button appears
+EXIT_BUTTON_WAIT_TIME = 2
 
 # network inputs for gameplay gamestate
 

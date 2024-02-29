@@ -45,18 +45,22 @@ class Game():
         self.display_screen = pygame.display.set_mode(self.WINDOW_SIZE, self.display_flags)
 
     def run_game(self):
-        # menu = Menu(self)
-        # menu.run_state()
-        #
-        waiting_screen = MatchMaking(self)
-        waiting_screen.run_state()
-        #
-        character_selection = CharacterSelection(self)
-        character_selection.run_state()
+        
+        while True:
+            menu = Menu(self)
+            menu.run_state()
 
-        gameplay = Gameplay(self)
-        gameplay.run_state()
+            matchmaking = MatchMaking(self)
+            matchmaking.run_state()
 
+            character_selection = CharacterSelection(self)
+            character_selection.run_state()
+
+            gameplay = Gameplay(self)
+            gameplay.run_state()
+
+            end_screen = EndScreen(self)
+            end_screen.run_state()
 
 
 def run_game():

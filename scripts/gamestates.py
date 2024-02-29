@@ -122,7 +122,7 @@ class Menu(GameState):
         # display title "Brawl Bunny"
         display_center(self.screen, self.title_image, (MID_X, 50))
 
-        # display menu text
+        # display play button
         self.play_button.display(self.screen, self.inputs["mouse_pos"])
 
         # check for mouse click to move to next state
@@ -141,33 +141,21 @@ class MatchMaking(GameState):
         self.LEFT_MID_X = MID_X // 2
         self.RIGHT_MID_X = MID_X + MID_X // 2
 
-        # # load table images
-        # self.vanquish_table = load_image("gamestates/mode_selection/vanquish_table.png")
 
         # buttons
         # self.login_button = Button("FONT_10", "Log In", (220, self.BUTTON_Y))
         # self.signup_button = Button("FONT_10", "Sign Up", (280, self.BUTTON_Y))
 
-        self.total_players = 4
         self.players_connected = 0
 
         self.player_number_determined = False
 
-        self.players_connected_text = Text("FONT_15", (238, 160, 96), f"{self.players_connected}/{self.total_players}", (MID_X, MID_Y))
+        self.players_connected_fixed_text = Text("FONT_10", (238, 160, 96), "players connected:", (MID_X, MID_Y - 20))
+        self.players_connected_text = Text("FONT_15", (238, 160, 96), f"{self.players_connected}/{TOTAL_PLAYERS}", (MID_X, MID_Y))
 
         self.end_timer = Timer()
 
     def process(self):
-        # display tables
-        # display_center(self.screen, self.vanquish_table, (self.LEFT_MID_X, 110))
-
-        # display buttons
-        # self.login_button.display(self.screen, self.inputs["mouse_pos"])
-        # self.signup_button.display(self.screen, self.inputs["mouse_pos"])
-
-        # center_draw_rect(self.screen, (57, 71, 120), (MID_X, MID_Y + 20, 100, 120), border_radius = 10)
-        # center_draw_rect(self.screen, (57, 120, 168), (MID_X, MID_Y + 20, 80, 100), border_radius = 10)
-
         if not self.player_number_determined:
             # send mac address to server to establish connection
             self.game.client.send(self.state_prefix, str(self.game.client.mac_address))
@@ -183,11 +171,15 @@ class MatchMaking(GameState):
             # get data of all clients from server
             client_data = message[1:].split(',')
 
+
             # check how many players are already connected
             self.players_connected = len(client_data)
 
             for data in client_data:
-                mac_address, player_number = list(map(int, data.split(":")))
+                try:
+                    mac_address, player_number = list(map(int, data.split(":")))
+                except ValueError:
+                    break
 
                 # server has assigned mac_address to a player number, player number obtained (on client)
                 if mac_address == self.game.client.get_mac_address():
@@ -195,15 +187,18 @@ class MatchMaking(GameState):
                     self.player_number_determined = True
 
             # all players joined, move on to next state
-            if self.players_connected == self.total_players:
+            if self.players_connected == TOTAL_PLAYERS:
                 self.end_timer.start()
 
         # 2 seconds to move on to next state after all players connected
         if self.end_timer.is_active() and self.end_timer.time_elapsed() >= 2:
             self.run = False
 
-        # display text
-        self.players_connected_text.display(self.screen, f"{self.players_connected}/{self.total_players}")
+        # fixed "players connected:" text
+        self.players_connected_fixed_text.display(self.screen)
+
+        # variable eg: "3/4" text
+        self.players_connected_text.display(self.screen, f"{self.players_connected}/{TOTAL_PLAYERS}")
 
 
 class CharacterSelection(GameState):
@@ -253,6 +248,19 @@ class Gameplay(GameState):
 
         self.respawn_text = Text("FONT_15", (48, 44, 46), "", (MID_X, MID_Y))
         self.respawn_time_left = -1
+
+        ''' Match UI '''
+        self.blue_score_banner = load_image("gamestates/gameplay/blue_score_banner.png")
+        self.red_score_banner = load_image("gamestates/gameplay/red_score_banner.png")
+
+        self.blue_score_text = Text("FONT_10", (40, 205, 223), "", (0.5 * MID_X, MATCH_TEXT_Y))
+        self.red_score_text = Text("FONT_10", (48, 44, 46), "", (1.5 * MID_X, MATCH_TEXT_Y))
+
+        self.match_time_text = Text("FONT_10", (48, 44, 46), "", (MID_X, MATCH_TEXT_Y))
+
+        ''' Transition to End State '''
+        self.match_end_timer = Timer()
+        self.match_over_text = Text("FONT_15", (48, 44, 46), "MATCH OVER!", (MID_X, MID_Y))
 
     # construct a string representing the client inputs. This is sent to the server
     def get_control_inputs_string(self):
@@ -319,7 +327,19 @@ class Gameplay(GameState):
 
         return RUN_Y_OFFSET[character_name][frame_index]
 
-    def process_base_message(self, player_number, character_name, x_coor, y_coor, character_state, frame_index, flip_sprite, health, ability_charge, extra_info):
+    def process_base_message(self):
+        # unpack the variables so that the variable names are shorter and the code can be more readable
+        player_number   = self.data["player_number"]
+        character_name  = self.data["character_name"]
+        x_coor          = self.data["x_coor"]
+        y_coor          = self.data["y_coor"]
+        character_state = self.data["character_state"]
+        frame_index     = self.data["frame_index"]
+        flip_sprite     = self.data["flip_sprite"]
+        health          = self.data["health"]
+        ability_charge  = self.data["ability_charge"]
+        extra_info      = self.data["extra_info"]
+
         # set position of camera to player's coordinate
         if player_number == self.game.player_number:
             self.camera_x, self.camera_y = x_coor, y_coor
@@ -395,12 +415,23 @@ class Gameplay(GameState):
             health_bar = HealthBar(health, BUNNY_STATS[character_name]["health"], (x_coor, y_coor), get_player_colour(player_number, self.game.player_number))
             self.camera.add_visible_sprite(health_bar)
 
-        # show abiltiy bar only for YOUR player
-        if player_number == self.game.player_number:
-            ability_bar = AbilityBar(ability_charge, BUNNY_STATS[character_name]["total_ability_charge"], (x_coor, y_coor))
-            self.camera.add_visible_sprite(ability_bar)
+            # show abiltiy bar only for YOUR player
+            if player_number == self.game.player_number:
+                ability_bar = AbilityBar(ability_charge, BUNNY_STATS[character_name]["total_ability_charge"], (x_coor, y_coor))
+                self.camera.add_visible_sprite(ability_bar)
 
-    def process_extra_message(self, player_number, character_name, x_coor, y_coor, character_state, frame_index, flip_sprite, health, ability_charge, extra_info):
+    def process_extra_message(self):
+        # unpack the variables so that the variable names are shorter and the code can be more readable
+        player_number   = self.data["player_number"]
+        character_name  = self.data["character_name"]
+        x_coor          = self.data["x_coor"]
+        y_coor          = self.data["y_coor"]
+        character_state = self.data["character_state"]
+        frame_index     = self.data["frame_index"]
+        flip_sprite     = self.data["flip_sprite"]
+        health          = self.data["health"]
+        ability_charge  = self.data["ability_charge"]
+        extra_info      = self.data["extra_info"]
 
         if health <= 0: # don't need to display anything since character is dead
             return
@@ -428,7 +459,6 @@ class Gameplay(GameState):
 
             self.camera.add_visible_sprite(hand_sprite)
 
-
             ''' Orbs '''
             orbs_info = extra_info[1:]
 
@@ -440,7 +470,6 @@ class Gameplay(GameState):
                 self.camera.add_visible_sprite(orb)
 
                 self.shader.shader_data["orbs_data"].append((x + MID_X - self.camera_x, y + MID_Y - self.camera_y, radius + 3)) # glow radius is 10
-
 
 
         elif character_name == "nature_bunny":
@@ -462,7 +491,15 @@ class Gameplay(GameState):
                 def display(self, screen, offset_x, offset_y):
                     render_points = [(p.x + offset_x, p.y + offset_y) for p in self.points]
 
-                    pygame.draw.lines(screen, (57, 120, 168), False, render_points, width = 5)
+                    # other colour type of line drawing
+                    # pygame.draw.lines(screen, (40, 205, 223), False, render_points, width = 5) # lightest colour
+                    # pygame.draw.lines(screen, (57, 120, 168), False, render_points, width = 3)
+                    # pygame.draw.lines(screen, (57, 71, 120), False, render_points, width = 1) # darkest colour
+
+                    pygame.draw.lines(screen, (57, 71, 120), False, render_points, width = 5) # darkest colour
+                    pygame.draw.lines(screen, (57, 120, 168), False, render_points, width = 3)
+                    pygame.draw.lines(screen, (40, 205, 223), False, render_points, width = 1) # lightest colour
+
 
                 def get_bottom_y(self):
                     return self.bottom_y - 1
@@ -506,17 +543,16 @@ class Gameplay(GameState):
             self.camera.add_visible_sprite(hand_sprite)
 
             ''' Orb '''
-            # if orb_radius > 0:
-                # orb = Circle((244, 179, 27), (orb_x, orb_y), orb_radius, y_offset = orb_radius)
-
-                # self.camera.add_visible_sprite(orb)
-
             self.shader.shader_data["light_orb"] = (orb_x + MID_X - self.camera_x, orb_y + MID_Y - self.camera_y, orb_radius)
 
             ''' Ability '''
 
-            self.shader.shader_data["light_beam_start"] = (MID_X - self.camera_x, MID_Y - self.camera_y)
-            self.shader.shader_data["light_beam_end"] = (light_beam_target_x + MID_X - self.camera_x, light_beam_target_y + MID_Y - self.camera_y)
+            if (light_beam_target_x == -1 and light_beam_target_y == -1):
+                self.shader.shader_data["light_beam_start"]  = (-1, -1)
+                self.shader.shader_data["light_beam_end"]  = (-1, -1)
+            else:
+                self.shader.shader_data["light_beam_start"] = (x_coor + MID_X - self.camera_x, y_coor + MID_Y - self.camera_y + ANGEL_BUNNY_ATTACK_Y_OFFSET)
+                self.shader.shader_data["light_beam_end"] = (light_beam_target_x + MID_X - self.camera_x, light_beam_target_y + MID_Y - self.camera_y + ANGEL_BUNNY_ATTACK_Y_OFFSET)
 
         elif character_name == "shadow_bunny":
             sword_frame_index, visible, in_shadow_realm = extra_info
@@ -547,32 +583,58 @@ class Gameplay(GameState):
             if player_number == self.game.player_number:
                 self.shader.shader_data["use_shadow_realm_shader"] = in_shadow_realm
 
-
-
     def update_display(self, message):
         client_data = message.split("|")
 
         for data in client_data:
-            player_number, data = data.split(":")
+            match_data, character_data = data.split(":")
 
-            character_prefix, x_coor, y_coor, character_state_prefix, frame_index, flip_sprite, health, ability_charge, *extra_info = data.split(",")
-
-            # change to appropriate data types
-            player_number = int(player_number)
-            x_coor = int(x_coor)
-            y_coor = int(y_coor)
-            frame_index = int(frame_index)
-            flip_sprite = bool(int(flip_sprite))
-            health = int(health)
-            ability_charge = int(ability_charge)
+            player_number, blue_team_score, red_team_score, match_time_left = match_data.split(",")
+            character_prefix, x_coor, y_coor, character_state_prefix, frame_index, flip_sprite, health, ability_charge, *extra_info = character_data.split(",")
 
             # get full character name and state from prefixes
             character_name = PREFIX_NAME_MAP[character_prefix]
             character_state = PREFIX_CHARACTER_STATE_MAP[character_state_prefix] # eg: "R" corresponds to the "run" character state
 
-            self.process_base_message(player_number, character_name, x_coor, y_coor, character_state, frame_index, flip_sprite, health, ability_charge, extra_info)
+            self.data = {}
 
-            self.process_extra_message(player_number, character_name, x_coor, y_coor, character_state, frame_index, flip_sprite, health, ability_charge, extra_info)
+            # change to appropriate data types
+            self.data["player_number"]   = int(player_number)
+            self.data["blue_team_score"] = int(blue_team_score)
+            self.data["red_team_score"]  = int(red_team_score)
+            self.data["match_time_left"] = int(match_time_left)
+
+            self.data["character_name"]  = character_name
+            self.data["x_coor"]          = int(x_coor)
+            self.data["y_coor"]          = int(y_coor)
+            self.data["character_state"] = character_state
+            self.data["frame_index"]     = int(frame_index)
+            self.data["flip_sprite"]     = bool(int(flip_sprite))
+            self.data["health"]          = int(health)
+            self.data["ability_charge"]  = int(ability_charge)
+            self.data["extra_info"]      = extra_info
+
+
+            self.process_base_message()
+            self.process_extra_message()
+
+    def display_match_UI(self):
+        # display banners
+        display_center(self.screen, self.blue_score_banner, (0.5 * MID_X, MATCH_TEXT_Y + 2))
+        display_center(self.screen, self.red_score_banner, (1.5 * MID_X, MATCH_TEXT_Y + 2))
+
+        # display score texts (how many kills out of total)
+        blue_score = self.data["blue_team_score"]
+        red_score = self.data["red_team_score"]
+
+        self.blue_score_text.display(self.screen, f"{blue_score}/{KILLS_TO_WIN}")
+        self.red_score_text.display(self.screen, f"{red_score}/{KILLS_TO_WIN}")
+
+        # convert seconds to minutes and seconds
+        minutes, seconds = divmod(self.data["match_time_left"], 60)
+
+        # display match time left
+        self.match_time_text.display(self.screen, f"{minutes}:{seconds}")
 
     def process(self):
         ''' initialise '''
@@ -589,23 +651,104 @@ class Gameplay(GameState):
         ''' Receiving from Server '''
         message = self.game.client.get_message()
 
-        if message[0] != "G":
+        # start countdown to move to endscreen state
+        if len(message) >= 6 and message[1:6] == "ENDED":
+            self.match_end_timer.start()
+
+            # get blue team score and red team score from server message
+            ended_text, self.data["blue_team_score"], self.data["red_team_score"] = message.split(',')
+
+        # move on to endscreen state if server timer is up
+        if message[0] == STATE_PREFIX_MAP["EndScreen"]:
+            self.run = False
+
+        if message[0] != self.state_prefix:
             return
 
         ''' Update '''
-        # interpret server message and add player sprites to camera
-        self.update_display(message[1:])
+        # only update if the game has not ended
+
+        if not self.match_end_timer.is_active():
+            # interpret server message and add player sprites to camera
+            self.update_display(message[1:])
+
+        # get objects that needs to be displayed
         objects = self.map.get_neighbouring_chunk_data(self.camera_x, self.camera_y, "objects")
 
+        # add objects to camera
         self.camera.add_visible_sprites(objects)
 
-        self.shader.shader_data["orbs_data"].extend([(0.0, 0.0, 0.0) for i in range(20 - len(self.shader.shader_data["orbs_data"]))])
-
         ''' display '''
+        # display all the sprites in the camera
         self.camera.display_sprites(self.screen, self.camera_x, self.camera_y)
+
+        # display UI at the top of the screen
+        self.display_match_UI()
+
+        # display match over text
+        if self.match_end_timer.is_active():
+            self.match_over_text.display(self.screen)
 
         if self.respawn_time_left != -1:
             self.respawn_text.display(self.screen, f"Respawning in: {self.respawn_time_left}")
+
+class EndScreen(GameState):
+    def __init__(self, game):
+        super().__init__(game)
+
+        # set background colour
+        self.background_colour = (238, 160, 96)
+
+        # background image
+        self.background_image = load_image("gamestates/endscreen/endscreen_background.png")
+
+        # buttons
+        self.exit_timer = LimitTimer(EXIT_BUTTON_WAIT_TIME)
+        self.exit_timer.start()
+
+        self.exit_button = Button("FONT_15", "Exit", (280, 150))
+
+        # texts
+        self.blue_text = Text("FONT_15", (40, 205, 223), "WIN", (0.5 * MID_X, WIN_TEXT_Y))
+        self.red_text = Text("FONT_15", (244, 179, 27), "WIN", (1.5 * MID_X, WIN_TEXT_Y))
+        self.draw_text = Text("FONT_15", (48, 44, 46), "DRAW", (MID_X, WIN_TEXT_Y))
+
+        # result prefix
+        self.result_prefix = ""
+
+    def process(self):
+        # send message as server needs to receive message in order to reply
+        self.game.client.send(self.state_prefix, "OK")
+
+        # receive message
+        message = self.game.client.get_message()
+
+        # get result prefix from server
+        if message and message[0] == self.state_prefix:
+            if message[1:]:
+                self.result_prefix = message[1:]
+
+        # display background
+        self.screen.blit(self.background_image, (0, 0))
+
+        if self.result_prefix:
+            if self.result_prefix == "B":
+                self.blue_text.display(self.screen, "WIN")
+                self.red_text.display(self.screen, "LOSE")
+            elif self.result_prefix == "R":
+                self.red_text.display(self.screen, "WIN")
+                self.blue_text.display(self.screen, "LOSE")
+            else:
+                self.draw_text.display(self.screen)
+
+        if self.exit_timer.is_over():
+            # display play button
+            self.exit_button.display(self.screen, self.inputs["mouse_pos"])
+
+            # check for mouse click to move to next state
+            if self.exit_button.is_clicked(self.inputs["events"], self.inputs["mouse_pos"]):
+                self.run = False
+
 
 class TestMap(GameState):
     def __init__(self, game):
