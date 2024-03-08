@@ -27,14 +27,11 @@ MID_Y = HEIGHT // 2
 BLACK = (0  , 0  , 0  )
 WHITE = (255, 255, 255)
 
-WATER_BLUE = (48, 162, 196)
-
 OWN_BLUE = (138, 236, 241)
 TEAMMATE_BLUE = (40, 205, 223)
 
 OWN_RED = (230, 71, 46)
 TEAMMATE_RED = (169, 59, 59)
-
 
 ''' Map '''
 TILE_SIZE = 16
@@ -44,8 +41,15 @@ USE_MAP = 3
 # USE_MAP 2 is a test map
 # USE_MAP 3 is the actual map
 
-# BLUE_START_POINT =
+# the location blue team starts at
+BLUE_START_POINT = {2: (MID_X, MID_Y), # starting position for map 2
+                    3: (350, 545)} # starting position for map 3
 
+# the location red team players start at
+RED_START_POINT = {2: (MID_X, MID_Y),
+                   3: (742, 571)}
+
+# the location blue team players start at
 RESPAWN_POINTS = {2: [(MID_X, MID_Y)],
                   3: [(521, 427), (742, 571), (744, 434), (350, 545)]}
 
@@ -68,7 +72,9 @@ server_ip = socket.gethostbyname(hostname)
 
 SERVER_IP = server_ip
 
+# for actual testing on multipler computers
 # SERVER_IP = "10.80.5.134"
+
 
 # networking prefixes
 
@@ -141,10 +147,10 @@ ANGEL_BUNNY_ATTACK_Y_OFFSET = 4 # y offset for where the attacks are released fr
 BUNNY_STATS = {"orb_bunny":    {"health": 5200,
                                 "speed": 1.5,
                                 "normal_attack_damage": 500,
-                                "total_ability_charge": 4000},
+                                "total_ability_charge": 3000},
                "nature_bunny": {"health": 6800,
-                                "speed": 1.8,
-                                "normal_attack_damage": 1200,
+                                "speed": 1.6,
+                                "normal_attack_damage": 1000,
                                 "attack_cooldown": 0.5,
                                 "total_ability_charge": 6000,
                                 "ability_time": 5,
@@ -161,8 +167,8 @@ BUNNY_STATS = {"orb_bunny":    {"health": 5200,
                                 "ability_time": 5,
                                 "ability_damage": 800}, # damage is dealt every MIN_ATTACK_INTERVAL
                "shadow_bunny": {"health": 6200,
-                                "speed": 1.5,
-                                "normal_attack_damage": 1300,
+                                "speed": 1.6,
+                                "normal_attack_damage": 1400,
                                 "total_ability_charge": 7000,
                                 "ability_time": 6}
 }

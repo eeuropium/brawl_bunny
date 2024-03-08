@@ -50,8 +50,6 @@ class Run(CharacterState):
     def update(self):
         super().update()
 
-''' Hand State '''
-
 
 
 ''' Layer '''
@@ -102,7 +100,7 @@ class ChangingLayer(Layer):                                     # for when facin
 ''' Entities '''
 
 class Bunny():
-    def __init__(self, name):
+    def __init__(self, name, team):
         self.name = name
 
         ''' States '''
@@ -115,10 +113,13 @@ class Bunny():
         ''' Movement '''
         self.SPEED = BUNNY_STATS[self.name]["speed"]
 
-        self.x = MID_X
-        self.y = MID_Y
 
-        self.x, self.y = random.choice(RESPAWN_POINTS[USE_MAP])
+        if team == "blue":
+            self.x, self.y = BLUE_START_POINT[USE_MAP]
+        elif team == "red":
+            self.x, self.y = RED_START_POINT[USE_MAP]
+        else:
+            assert False
 
         self.direction = pygame.math.Vector2()
         self.x_direction = 1 # 1 for facing right, -1 for facing left
@@ -338,8 +339,8 @@ class Bunny():
 
 
 class OrbBunny(Bunny):
-    def __init__(self):
-        super().__init__("orb_bunny")
+    def __init__(self, team):
+        super().__init__("orb_bunny", team)
 
         ''' Hand '''
         self.hand_angles = [90, 60, 30, 0, -15, -45, -75, -90]
@@ -538,8 +539,8 @@ class OrbBunny(Bunny):
         self.hand_layer.display(screen, display_x, display_y)
 
 class NatureBunny(Bunny):
-    def __init__(self):
-        super().__init__("nature_bunny")
+    def __init__(self, team):
+        super().__init__("nature_bunny", team)
 
         self.controls = {}
         self.controls["mouse_pos"] = (MID_X, MID_Y)
@@ -743,8 +744,8 @@ class NatureBunny(Bunny):
         return s
 
 class AngelBunny(Bunny):
-    def __init__(self):
-        super().__init__("angel_bunny")
+    def __init__(self, team):
+        super().__init__("angel_bunny", team)
 
         ''' Hand '''
         self.hand_state = "idle"
@@ -857,31 +858,32 @@ class AngelBunny(Bunny):
         # update orb position by moving it in the firing direction
         self.orb_pos += self.orb_vec
 
-        # create orb collision box
-        SIDE_LENGTH = max(2, int(self.orb_radius))
-        orb_collision_box = pygame.FRect(self.orb_pos.x - SIDE_LENGTH // 2, self.orb_pos.y - SIDE_LENGTH // 2, SIDE_LENGTH, SIDE_LENGTH)
+        if not self.orb_timer.is_active(): # only check for collision if not currently charging (firing the orb)
+            # create orb collision box
+            SIDE_LENGTH = max(2, int(self.orb_radius))
+            orb_collision_box = pygame.FRect(self.orb_pos.x - SIDE_LENGTH // 2, self.orb_pos.y - SIDE_LENGTH // 2, SIDE_LENGTH, SIDE_LENGTH)
 
-        # deal damage to enemies
-        for index, enemy in enumerate(enemies):
-            self.damage_update(index, enemy, orb_collision_box.colliderect(enemy.hitbox), int(self.orb_radius * BUNNY_STATS[self.name]["normal_attack_scaling"]))
+            # deal damage to enemies
+            for index, enemy in enumerate(enemies):
+                self.damage_update(index, enemy, orb_collision_box.colliderect(enemy.hitbox), int(self.orb_radius * BUNNY_STATS[self.name]["normal_attack_scaling"]))
 
-        # orb collision
-        orb_hit_object = False
+            # orb collision
+            orb_hit_object = False
 
-        # destroy orb if hit map obstacles
-        for hitbox in map_obj_hitboxes:
-            if orb_collision_box.colliderect(hitbox):
-                orb_hit_object = True
+            # destroy orb if hit map obstacles
+            for hitbox in map_obj_hitboxes:
+                if orb_collision_box.colliderect(hitbox):
+                    orb_hit_object = True
 
-        # destroy orb if hit enemies
-        for enemy in enemies:
-            if orb_collision_box.colliderect(enemy.hitbox):
-                orb_hit_object = True
+            # destroy orb if hit enemies
+            for enemy in enemies:
+                if orb_collision_box.colliderect(enemy.hitbox):
+                    orb_hit_object = True
 
-        # reset orb
-        if orb_hit_object or pygame.math.Vector2(self.x, self.y + ANGEL_BUNNY_ATTACK_Y_OFFSET).distance_to(self.orb_pos) >= BUNNY_STATS[self.name]["max_range"]:
-            self.orb_alive = False
-            self.orb_radius = 0
+            # reset orb
+            if orb_hit_object or pygame.math.Vector2(self.x, self.y + ANGEL_BUNNY_ATTACK_Y_OFFSET).distance_to(self.orb_pos) >= BUNNY_STATS[self.name]["max_range"]:
+                self.orb_alive = False
+                self.orb_radius = 0
 
         ''' Ability '''
 
@@ -931,8 +933,8 @@ class AngelBunny(Bunny):
     #     self.hand_layer.display(screen, display_x, display_y)
 
 class ShadowBunny(Bunny):
-    def __init__(self):
-        super().__init__("shadow_bunny")
+    def __init__(self, team):
+        super().__init__("shadow_bunny", team)
 
         ''' Sword '''
         self.sword_animation = SingleAnimation(f"bunny/{self.name}/{self.name}_sword.png", 64, 32)

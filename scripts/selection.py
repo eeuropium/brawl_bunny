@@ -85,8 +85,8 @@ class Cards:
             if card.is_clicked(inputs["events"]):
                 select_index = index
 
-        # testing (auto-selection)
-        return f"{player_number}:{player_number - 1}"
+        # # testing (auto-selection)
+        # return f"{player_number}:{player_number - 1}"
 
         # actual
         return f"{player_number}:{select_index}"

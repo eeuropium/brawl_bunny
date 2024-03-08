@@ -237,7 +237,7 @@ class CharacterSelection(GameState):
 class Gameplay(GameState):
     def __init__(self, game):
         super().__init__(game)
-        self.background_colour = WATER_BLUE
+        self.background_colour = (113, 170, 52) # grass green
 
         self.map = Map(f"map{USE_MAP}.json")
 

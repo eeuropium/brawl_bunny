@@ -100,13 +100,18 @@ class Gameplay():
         self.match_end_timer = LimitTimer(MATCH_END_WAIT_TIME)
 
     def init_character_selections(self, selection_map):
-        self.players = {}
+        self.players = {} # dictionary of player number (starting from 1 to 4) to the player character object
 
-        # correct order
-        self.players[selection_map[0]] = OrbBunny()
-        self.players[selection_map[1]] = NatureBunny()
-        self.players[selection_map[2]] = AngelBunny()
-        self.players[selection_map[3]] = ShadowBunny()
+        # create player objects based on the players selection from the selection gamestate
+        character_order = [OrbBunny, NatureBunny, AngelBunny, ShadowBunny] # order of the cards in the selection phase
+
+        for i in range(4):
+            if selection_map[i] <= 2:
+                team = "blue"
+            else:
+                team = "red"
+
+            self.players[selection_map[i]] = character_order[i](team)
 
         # testing
         # self.players[selection_map[0]] = NatureBunny()
