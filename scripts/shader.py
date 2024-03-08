@@ -38,6 +38,7 @@ class Shader():
         "light_orb": (0.0, 0.0, 0.0),
         "light_beam_start": (-1, -1),
         "light_beam_end": (-1, -1),
+        "crack_faces": [(0, 0) for i in range(100 * 20)]
         }
 
     def surf_to_texture(self, surf):
@@ -81,6 +82,9 @@ class Shader():
         self.program["light_beam_start"] = self.shader_data["light_beam_start"]
         self.program["light_beam_end"] = self.shader_data["light_beam_end"]
 
+        # angel bunny cracking animation
+        # print(self.shader_data["crack_faces"])
+        # self.program["crack_faces"] = self.shader_data["crack_faces"]
 
         self.render_object.render(mode = moderngl.TRIANGLE_STRIP)
 

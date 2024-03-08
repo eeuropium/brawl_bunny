@@ -101,6 +101,8 @@ def get_box(path):
         if found:
             break
 
+    width, height = image_width - left, image_height - top
+
     # find width of hitbox
     for x in range(left, image_width):
         if hitbox_image.get_at((x, top)).a == 0:
@@ -119,7 +121,7 @@ def get_box(path):
 
 # get colour (for selection, health bar etc.) for each player (blue or red based on team)
 def get_player_colour(player_number, my_player_number):
-    
+
     if player_number == my_player_number: # the currently considered player is you, so own colours
         if player_number <= TOTAL_PLAYERS // 2:
             colour = OWN_BLUE

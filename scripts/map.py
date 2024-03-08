@@ -64,26 +64,48 @@ class Map:
 
         if USE_MAP == 3:
             self.tile_dict = {i + 157: tile_images[i] for i in range(num_tiles)}
-        else:
+        elif USE_MAP == 2:
             self.tile_dict = {i + 1: tile_images[i] for i in range(num_tiles)}
+        else:
+            assert False
 
         ''' Object Dicts '''
 
         # go through all the files in the specified folder, listed in alphabetical order (indicated by sorted)
-        for index, file_name in enumerate(sorted(os.listdir("data/images/map_assets/objects"))):
+        for index, file_name in enumerate(sorted(os.listdir(f"data/images/map_assets/objects/map{USE_MAP}"))):
 
             object_name = file_name[:-4] # -4 to take away ".png"
 
             if USE_MAP == 3:
-                self.id_to_name[index + 117] = object_name # assign ID
-            else:
+                self.id_to_name[index + 118] = object_name # assign ID
+            elif USE_MAP == 2:
                 self.id_to_name[num_tiles + index + 1] = object_name # assign ID
+            else:
+                assert False
 
-            self.object_surf[object_name] = load_image(f"map_assets/objects/{file_name}")
+            self.object_surf[object_name] = load_image(f"map_assets/objects/map{USE_MAP}/{file_name}")
 
-            self.object_collision_box[object_name] = get_box(f"box/collision_box/objects/{object_name}_collision_box.png")
 
-            self.object_hitbox[object_name] = get_box(f"box/hitbox/objects/{object_name}_hitbox.png")
+            try:
+                self.object_collision_box[object_name] = get_box(f"box/collision_box/objects/map{USE_MAP}/{object_name}_collision_box.png")
+                collision_box_exist = True
+            except FileNotFoundError:
+                self.object_collision_box[object_name] = (0, 0, 0, 0)
+                collision_box_exist = False
+
+            if collision_box_exist:
+                # try to find for hitbox object
+                try:
+                    self.object_hitbox[object_name] = get_box(f"box/hitbox/objects/map{USE_MAP}/{object_name}_hitbox.png")
+                # if not hitbox file found, set the hitbox to the collision box
+                except FileNotFoundError:
+                    self.object_hitbox[object_name] = self.object_collision_box[object_name]
+            else:
+                self.object_hitbox[object_name] = (0, 0, 0, 0)
+
+            # This works because of how I created the map. I first created the collision box for all objects
+            # If the object has a different hitbox, I draw it and add it to the hitbox folder.
+            # If the hitbox is the same as the collision box, there will be no hitbox file, only the collision box file.
 
 
     def build_map_surf(self, map_path):
@@ -104,8 +126,8 @@ class Map:
         # initialise chunk dictionary
         chunks = {}
 
-        for x in range(-1, (columns // CHUNK_SIZE) + 1): # -1 to account for objects which may be partly offscreen
-            for y in range(-1, (rows // CHUNK_SIZE) + 1): # +1 to account for rounding down division
+        for x in range(-5, (columns // CHUNK_SIZE) + 5): # -5 to account for objects which may be partly offscreen
+            for y in range(-5, (rows // CHUNK_SIZE) + 5): # +5 to account for rounding down division and objects which are partly offscreen
                 chunks[(x, y)] = {"objects": [],
                                   "map_obj_collision_boxes": [],
                                   "map_obj_hitboxes": []}
@@ -120,8 +142,6 @@ class Map:
                         # formula to calculate index since layer_data is a 1D array
                         tile_id = layer_data[cur_row * columns + cur_col]
 
-                        # print(tile_id)
-
                         # converting layer_data to 2D array would be more inefficient
 
                         # no tiles at current position
@@ -133,7 +153,12 @@ class Map:
                         # calculate x, y coordinates on map surface
                         x, y = cur_col * TILE_SIZE, cur_row * TILE_SIZE
 
-                        if tile_id in [1, 3, 4, 5, 17, 19, 33, 34, 35]: # hard coded
+                        OBSTACLE_TILE_IDS = [1, 2, 3, 4, 5, 17, 19, 33, 34, 35]
+
+                        if USE_MAP == 3: # the ID is offset for map3 because of the way the Tiled application is structure which I used to create the maps
+                            OBSTACLE_TILE_IDS = [e + 156 for e in OBSTACLE_TILE_IDS]
+
+                        if tile_id in OBSTACLE_TILE_IDS: # hard coded
                             chunk_x, chunk_y = calc_chunk_xy(x, y)
                             chunks[(chunk_x, chunk_y)]["map_obj_collision_boxes"].append(pygame.Rect(x, y, TILE_SIZE, TILE_SIZE))
                             chunks[(chunk_x, chunk_y)]["map_obj_hitboxes"].append(pygame.Rect(x, y, TILE_SIZE, TILE_SIZE))

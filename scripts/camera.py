@@ -38,7 +38,6 @@ class Circle():
         return self.y + self.y_offset
 
 
-
 class Camera():
     def __init__(self, map_surf):
         self.visible_sprites = []

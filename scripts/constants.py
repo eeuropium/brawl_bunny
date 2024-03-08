@@ -40,7 +40,18 @@ TEAMMATE_RED = (169, 59, 59)
 TILE_SIZE = 16
 CHUNK_SIZE = 10
 
-USE_MAP = 2
+USE_MAP = 3
+# USE_MAP 2 is a test map
+# USE_MAP 3 is the actual map
+
+# BLUE_START_POINT =
+
+RESPAWN_POINTS = {2: [(MID_X, MID_Y)],
+                  3: [(521, 427), (742, 571), (744, 434), (350, 545)]}
+
+''' Camera '''
+
+MID_TO_FEET = 14 # number of pixels from the center display y-coordinate to the feet (bottom_y) of the bunny
 
 ''' Animation '''
 FRAME_INTERVAL = 0.1
@@ -57,7 +68,7 @@ server_ip = socket.gethostbyname(hostname)
 
 SERVER_IP = server_ip
 
-SERVER_IP = "10.80.5.134"
+# SERVER_IP = "10.80.5.134"
 
 # networking prefixes
 

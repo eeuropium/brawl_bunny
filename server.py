@@ -86,10 +86,7 @@ class Gameplay():
     def __init__(self, server):
         self.server = server
 
-        if USE_MAP == 3:
-            self.map = Map("map3.json")
-        else:
-            self.map = Map("map2.json")
+        self.map = Map(f"map{USE_MAP}.json")
 
         ''' Match Data '''
         self.match_timer = LimitTimer(MATCH_DURATION)

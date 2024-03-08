@@ -117,18 +117,18 @@ class Bunny():
 
         self.x = MID_X
         self.y = MID_Y
+
+        self.x, self.y = random.choice(RESPAWN_POINTS[USE_MAP])
+
         self.direction = pygame.math.Vector2()
         self.x_direction = 1 # 1 for facing right, -1 for facing left
 
-        self.RESPAWN_X = MID_X
-        self.RESPAWN_Y = MID_Y
-
         ''' Boxes '''
         self.collision_box_x_offset, self.collision_box_y_offset, self.org_collision_box_width, self.org_collision_box_height = get_box(f"box/collision_box/entities/{self.name}_collision_box.png")
-        self.collision_box = pygame.FRect(self.RESPAWN_X, self.RESPAWN_Y, self.org_collision_box_width, self.org_collision_box_height) # placeholder for start_x, start_y
+        self.collision_box = pygame.FRect(self.x, self.y, self.org_collision_box_width, self.org_collision_box_height) # placeholder for start_x, start_y
 
         self.hitbox_x_offset, self.hitbox_y_offset, self.org_hitbox_width, self.org_hitbox_height = get_box(f"box/hitbox/entities/{self.name}_hitbox.png")
-        self.hitbox = pygame.FRect(self.RESPAWN_X, self.RESPAWN_Y, self.org_hitbox_width, self.org_hitbox_height) # placeholder for start_x, start_y
+        self.hitbox = pygame.FRect(self.x, self.y, self.org_hitbox_width, self.org_hitbox_height) # placeholder for start_x, start_y
 
         ''' Attacking '''
         self.last_hit_timers = [Timer() for i in range(TOTAL_PLAYERS // 2)] # this is the number of enemies
@@ -178,8 +178,9 @@ class Bunny():
             self.respawn_timer.end()
             self.health = self.TOTAL_HEALTH
 
+            respawn_x, respawn_y = random.choice(RESPAWN_POINTS[USE_MAP])
             # collision box coordinates determines self.x, self.y and hitbox coordinates so we reset this to reset all of them
-            self.collision_box = pygame.FRect(self.RESPAWN_X, self.RESPAWN_Y, self.org_collision_box_width, self.org_collision_box_height)
+            self.collision_box = pygame.FRect(respawn_x, respawn_y, self.org_collision_box_width, self.org_collision_box_height)
 
             # turn on back the hitbox
             self.hitbox.width = self.org_hitbox_width

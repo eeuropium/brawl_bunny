@@ -91,7 +91,7 @@ class LimitTimer(Timer):
     def end(self):
         super().end()
         self.time_offset = 0
-        
+
     def is_over(self):
         return (self.time_elapsed() + self.time_offset) >= self.time_limit
 

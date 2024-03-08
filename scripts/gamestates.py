@@ -11,6 +11,8 @@ from scripts.map import Map
 from scripts.camera import *
 from scripts.shader import Shader
 from scripts.client import Client
+from scripts.particles import * # for shadow bunny
+from scripts.cracking import Crack # for angel bunny
 
 class GameState():
     def __init__(self, game):
@@ -81,11 +83,14 @@ class GameState():
             # changed for each unique state
             self.process()
 
+
             ''' display and updates '''
             self.shader.apply_shader(self.screen)
 
             # shader now scales and displays the surface so this is not needed
             # self.game.display_screen.blit(pygame.transform.scale(self.screen, self.game.display_screen.get_size()), (0, 0))
+
+            # pygame.draw.circle(self.screen, (255, 0, 0), (MID_X, MID_Y), 500)
 
             pygame.display.flip()
 
@@ -234,7 +239,8 @@ class Gameplay(GameState):
         super().__init__(game)
         self.background_colour = WATER_BLUE
 
-        self.map = Map("map2.json")
+        self.map = Map(f"map{USE_MAP}.json")
+
         self.camera = Camera(self.map.map_surf)
 
         self.frame_image_map = self.init_animation_images()
@@ -244,8 +250,10 @@ class Gameplay(GameState):
 
         # if the shadow bunny is visible on the previous frame
         # this helps us know when to add smoke particles (which are processed locally due to the huge data volume)
-        self.prev_shadow_bunny_visible = True
+        self.prev_data = {"in_shadow_realm": False,
+                          "light_orb_radius": 0}
 
+        ''' Respawn '''
         self.respawn_text = Text("FONT_15", (48, 44, 46), "", (MID_X, MID_Y))
         self.respawn_time_left = -1
 
@@ -261,6 +269,10 @@ class Gameplay(GameState):
         ''' Transition to End State '''
         self.match_end_timer = Timer()
         self.match_over_text = Text("FONT_15", (48, 44, 46), "MATCH OVER!", (MID_X, MID_Y))
+
+        ''' Particles '''
+        self.particles = Particles()
+        self.crack = Crack()
 
     # construct a string representing the client inputs. This is sent to the server
     def get_control_inputs_string(self):
@@ -352,7 +364,7 @@ class Gameplay(GameState):
             image = pygame.transform.flip(image, True, False)
 
         # pass the image into a sprite object so camera can call the object's "display" method
-        sprite_object = SimpleSprite(image, (x_coor, y_coor), display_mode = "center")
+        sprite_object = SimpleSprite(image, (x_coor, y_coor), display_mode = "center", y_offset = MID_TO_FEET)
 
         # special check as if shadow bunny is in shadow_realm, it should not be added to the camera                         # check if character is alive
         if not(character_name == "shadow_bunny" and player_number != self.game.player_number and bool(int(extra_info[2]))) and health > 0:
@@ -455,7 +467,7 @@ class Gameplay(GameState):
                 hand_image = pygame.transform.flip(hand_image, True, False)
 
             # make hand image into a sprite and add to camera
-            hand_sprite = SimpleSprite(hand_image, (x_coor + 4 * x_direction, y_coor + 5 - y_offset), display_mode = "center")
+            hand_sprite = SimpleSprite(hand_image, (x_coor + 4 * x_direction, y_coor + 5 - y_offset), display_mode = "center", y_offset = MID_TO_FEET + 3)
 
             self.camera.add_visible_sprite(hand_sprite)
 
@@ -470,6 +482,7 @@ class Gameplay(GameState):
                 self.camera.add_visible_sprite(orb)
 
                 self.shader.shader_data["orbs_data"].append((x + MID_X - self.camera_x, y + MID_Y - self.camera_y, radius + 3)) # glow radius is 10
+
 
 
         elif character_name == "nature_bunny":
@@ -502,7 +515,7 @@ class Gameplay(GameState):
 
 
                 def get_bottom_y(self):
-                    return self.bottom_y - 1
+                    return self.bottom_y + MID_TO_FEET - 1
 
             # add left vine object
             self.camera.add_visible_sprite(Vine(p0, p1, pl, y_coor))
@@ -538,7 +551,7 @@ class Gameplay(GameState):
             #     y_offset = 0
 
             # make hand image into a sprite and add to camera
-            hand_sprite = SimpleSprite(hand_image, (x_coor, y_coor - y_offset), y_offset = 3, display_mode = "center")
+            hand_sprite = SimpleSprite(hand_image, (x_coor, y_coor - y_offset), y_offset = MID_TO_FEET + 3, display_mode = "center")
 
             self.camera.add_visible_sprite(hand_sprite)
 
@@ -553,6 +566,38 @@ class Gameplay(GameState):
             else:
                 self.shader.shader_data["light_beam_start"] = (x_coor + MID_X - self.camera_x, y_coor + MID_Y - self.camera_y + ANGEL_BUNNY_ATTACK_Y_OFFSET)
                 self.shader.shader_data["light_beam_end"] = (light_beam_target_x + MID_X - self.camera_x, light_beam_target_y + MID_Y - self.camera_y + ANGEL_BUNNY_ATTACK_Y_OFFSET)
+
+            ''' Explosion Cracking Effect '''
+
+
+            # if current orb radius is less than previous orb radius, it means the orb has just exploded
+            if orb_radius < self.prev_data["light_orb_radius"]:
+                self.crack.start(orb_x, orb_y, self.prev_data["light_orb_radius"]) # trigger the crack animation
+
+            # update prev orb radius
+            self.prev_data["light_orb_radius"] = orb_radius
+
+            faces = self.crack.get_faces()
+
+            if faces:
+                # create a surface to draw the cracking
+                SURF_SIDE_LENGTH = 300
+                crack_surf = pygame.Surface((SURF_SIDE_LENGTH, SURF_SIDE_LENGTH))
+                crack_surf.set_colorkey(BLACK)
+
+                # draw the cracking on the surface, with the center of the crack being the center of the square surface
+                for face in faces:
+                    pygame.draw.polygon(crack_surf, (255, 228, 163), [(x + SURF_SIDE_LENGTH // 2, y + SURF_SIDE_LENGTH // 2) for x, y in face])
+                    pygame.draw.lines(crack_surf, WHITE, True, [(x + SURF_SIDE_LENGTH // 2, y + SURF_SIDE_LENGTH // 2) for x, y in face])
+
+                # set transparency value of surface
+                # crack_surf.set_alpha(128)
+                crack_surf.set_alpha(255 * (1 - self.crack.timer.get_t_value()))
+
+                # add surface to camera
+                self.camera.add_visible_sprite(SimpleSprite(crack_surf, self.crack.get_center(), y_offset = 100000, display_mode = "center"))
+                # y_offset is placed very high so the crack effect is displayed at the very front and not hidden behind other objects
+
 
         elif character_name == "shadow_bunny":
             sword_frame_index, visible, in_shadow_realm = extra_info
@@ -572,7 +617,7 @@ class Gameplay(GameState):
                 sword_image = pygame.transform.flip(sword_image, True, False)
 
             # make sword image into a sprite and add to camera                                      # y_offset is more than character y so that sword displays in front of the character
-            sword_sprite = SimpleSprite(sword_image, (x_coor + 16 * x_direction, y_coor - y_offset), y_offset = y_coor + 1, display_mode = "center")
+            sword_sprite = SimpleSprite(sword_image, (x_coor + 16 * x_direction, y_coor - y_offset), y_offset = MID_TO_FEET + 1, display_mode = "center")
 
             # display sword if attacking, even when using ability
             if player_number == self.game.player_number or visible:
@@ -582,6 +627,14 @@ class Gameplay(GameState):
 
             if player_number == self.game.player_number:
                 self.shader.shader_data["use_shadow_realm_shader"] = in_shadow_realm
+
+            ''' Particle Effects '''
+
+            if self.prev_data["in_shadow_realm"] != in_shadow_realm:
+                self.particles.add_particles(x_coor, y_coor, 200)
+
+            self.prev_data["in_shadow_realm"] = in_shadow_realm
+
 
     def update_display(self, message):
         client_data = message.split("|")
@@ -667,7 +720,6 @@ class Gameplay(GameState):
 
         ''' Update '''
         # only update if the game has not ended
-
         if not self.match_end_timer.is_active():
             # interpret server message and add player sprites to camera
             self.update_display(message[1:])
@@ -677,6 +729,13 @@ class Gameplay(GameState):
 
         # add objects to camera
         self.camera.add_visible_sprites(objects)
+
+        # update particles
+        self.particles.update()
+
+        # add particles to camera
+        self.camera.add_visible_sprites(self.particles.particles)
+
 
         ''' display '''
         # display all the sprites in the camera
@@ -755,7 +814,7 @@ class TestMap(GameState):
         super().__init__(game)
         self.background_colour = WATER_BLUE
 
-        self.map = Map("map2.json")
+        self.map = Map(f"map{USE_MAP}.json")
 
 
     def process(self):

@@ -45,10 +45,10 @@ class Game():
         self.display_screen = pygame.display.set_mode(self.WINDOW_SIZE, self.display_flags)
 
     def run_game(self):
-        
+
         while True:
-            menu = Menu(self)
-            menu.run_state()
+            # menu = Menu(self)
+            # menu.run_state()
 
             matchmaking = MatchMaking(self)
             matchmaking.run_state()
