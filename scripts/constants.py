@@ -73,7 +73,7 @@ server_ip = socket.gethostbyname(hostname)
 SERVER_IP = server_ip
 
 # for actual testing on multipler computers
-# SERVER_IP = "10.80.5.134"
+SERVER_IP = "10.80.5.134"
 
 
 # networking prefixes
