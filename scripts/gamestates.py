@@ -52,9 +52,6 @@ class GameState():
             self.mouse_pos.x = round(self.mouse_pos.x * WIDTH / DISPLAY_WIDTH)
             self.mouse_pos.y = round(self.mouse_pos.y * HEIGHT / DISPLAY_HEIGHT)
 
-            # self.mouse_pos.x = round(self.mouse_pos.x * WIDTH / pygame.display.Info().current_h)
-            # self.mouse_pos.y = round(self.mouse_pos.y * HEIGHT / pygame.display.Info().current_w)
-
             # place all inputs into a dictionary for better scalability (if new inputs need to be added itf)
             self.inputs = {}
             self.inputs["dt"] = self.dt
@@ -118,6 +115,7 @@ class Menu(GameState):
 
         # buttons
         self.play_button = Button("FONT_15", "Start", (MID_X, 120))
+        self.instruction_button = Button("FONT_10", "How to play", (MID_X, 150))
 
     def process(self):
         # display flags
@@ -130,9 +128,36 @@ class Menu(GameState):
         # display play button
         self.play_button.display(self.screen, self.inputs["mouse_pos"])
 
-        # check for mouse click to move to next state
+        # display how to play button
+        self.instruction_button.display(self.screen, self.inputs["mouse_pos"])
+
+        # check for mouse click to move to selection state
         if self.play_button.is_clicked(self.inputs["events"], self.inputs["mouse_pos"]):
             self.run = False
+
+        # check for mouse click to move to instruction state
+        if self.instruction_button.is_clicked(self.inputs["events"], self.inputs["mouse_pos"]):
+            self.instruction_state = Instruction(self.game)
+            self.instruction_state.run_state()
+
+class Instruction(GameState):
+    def __init__(self, game):
+        super().__init__(game)
+        self.instruction_image = load_image("gamestates/instruction/instructions.png")
+
+        self.back_button = Button("FONT_15", "Back", (50, 18))
+
+    def process(self):
+        # display instruction image
+        self.screen.blit(self.instruction_image, (0, 0))
+
+        # display back button
+        self.back_button.display(self.screen, self.inputs["mouse_pos"])
+
+        # return to menu if mouse is clicked
+        if self.back_button.is_clicked(self.inputs["events"], self.inputs["mouse_pos"]):
+            self.run = False
+
 
 class MatchMaking(GameState):
     def __init__(self, game):
@@ -145,11 +170,6 @@ class MatchMaking(GameState):
         self.BUTTON_Y = 15
         self.LEFT_MID_X = MID_X // 2
         self.RIGHT_MID_X = MID_X + MID_X // 2
-
-
-        # buttons
-        # self.login_button = Button("FONT_10", "Log In", (220, self.BUTTON_Y))
-        # self.signup_button = Button("FONT_10", "Sign Up", (280, self.BUTTON_Y))
 
         self.players_connected = 0
 
@@ -204,7 +224,6 @@ class MatchMaking(GameState):
 
         # variable eg: "3/4" text
         self.players_connected_text.display(self.screen, f"{self.players_connected}/{TOTAL_PLAYERS}")
-
 
 class CharacterSelection(GameState):
     def __init__(self, game):
@@ -591,12 +610,11 @@ class Gameplay(GameState):
                     pygame.draw.lines(crack_surf, WHITE, True, [(x + SURF_SIDE_LENGTH // 2, y + SURF_SIDE_LENGTH // 2) for x, y in face])
 
                 # set transparency value of surface
-                # crack_surf.set_alpha(128)
-                crack_surf.set_alpha(255 * (1 - self.crack.timer.get_t_value()))
+                crack_surf.set_alpha(self.crack.get_transparency_value())
 
                 # add surface to camera
                 self.camera.add_visible_sprite(SimpleSprite(crack_surf, self.crack.get_center(), y_offset = 100000, display_mode = "center"))
-                # y_offset is placed very high so the crack effect is displayed at the very front and not hidden behind other objects
+                # y_offset is set to a very high value so the crack effect is displayed at the very front and not hidden behind other objects
 
 
         elif character_name == "shadow_bunny":
@@ -630,6 +648,7 @@ class Gameplay(GameState):
 
             ''' Particle Effects '''
 
+            # add particles if disappearing into shadow realm or coming out of shadow realm
             if self.prev_data["in_shadow_realm"] != in_shadow_realm:
                 self.particles.add_particles(x_coor, y_coor, 200)
 
@@ -686,6 +705,13 @@ class Gameplay(GameState):
         # convert seconds to minutes and seconds
         minutes, seconds = divmod(self.data["match_time_left"], 60)
 
+        # convert seconds to string so we can pad a 0 if the number of seconds is single digit
+        seconds = str(seconds)
+
+        # pad 0 in front if seconds is single digit
+        if len(seconds) == 1:
+            seconds = f"0{seconds}"
+
         # display match time left
         self.match_time_text.display(self.screen, f"{minutes}:{seconds}")
 
@@ -734,8 +760,7 @@ class Gameplay(GameState):
         self.particles.update()
 
         # add particles to camera
-        self.camera.add_visible_sprites(self.particles.particles)
-
+        self.camera.add_visible_sprites(self.particles.get_particles())
 
         ''' display '''
         # display all the sprites in the camera
@@ -790,6 +815,7 @@ class EndScreen(GameState):
         # display background
         self.screen.blit(self.background_image, (0, 0))
 
+        # set display text based on result prefix
         if self.result_prefix:
             if self.result_prefix == "B":
                 self.blue_text.display(self.screen, "WIN")
@@ -807,15 +833,3 @@ class EndScreen(GameState):
             # check for mouse click to move to next state
             if self.exit_button.is_clicked(self.inputs["events"], self.inputs["mouse_pos"]):
                 self.run = False
-
-
-class TestMap(GameState):
-    def __init__(self, game):
-        super().__init__(game)
-        self.background_colour = WATER_BLUE
-
-        self.map = Map(f"map{USE_MAP}.json")
-
-
-    def process(self):
-        display_center(self.screen, self.map.map_surf, (MID_X, MID_Y))

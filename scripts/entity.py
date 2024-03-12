@@ -14,9 +14,6 @@ class CharacterState():
     def update(self):
         self.character.frame_index = self.animation.get_frame_index()
 
-        # if self.character.x_direction == -1:
-        #     self.character.image = pygame.transform.flip(self.character.image, True, False)
-
     def get_y_offsets(self):
         return None
 
@@ -50,52 +47,6 @@ class Run(CharacterState):
     def update(self):
         super().update()
 
-
-
-''' Layer '''
-
-class Layer():
-    def __init__(self):
-        pass
-
-    def update(self, image, x_direction):
-        self.image = image
-
-        if x_direction == -1:
-            self.image = pygame.transform.flip(self.image, True, False)
-
-    def display(self, screen, display_x, display_y):
-        screen.blit(self.image, (display_x, display_y))
-
-
-class ChangingLayer(Layer):                                     # for when facing left and right
-    def __init__(self, base_offset_x = 0, base_offset_y = 0, left_offset_x = 0, right_offset_x = 0):
-        # constant values
-        self.base_offset_x = base_offset_x
-        self.base_offset_y = base_offset_y
-        self.left_offset_x = left_offset_x
-        self.right_offset_x = right_offset_x
-
-        # depends on state
-        self.y_offset = 0
-        self.x_offset = 0
-
-    def update(self, image, x_direction, state):
-        super().update(image, x_direction)
-
-        # calculate x offset
-        self.x_offset = self.base_offset_x * x_direction + (x_direction == -1) * self.left_offset_x + (x_direction == 1) * self.right_offset_x
-
-        # calculate y offset
-        self.y_offset = self.base_offset_y
-
-        y_offsets = state.get_y_offsets()
-
-        if y_offsets:
-            self.y_offset -= y_offsets[state.animation.get_frame_index()]
-
-    def display(self, screen, display_x, display_y):
-        screen.blit(self.image, (display_x + self.x_offset, display_y + self.y_offset))
 
 ''' Entities '''
 
@@ -158,9 +109,21 @@ class Bunny():
             # calculate ability charge from time elapsed since activating the ability
             if self.ability_timer.is_over():
                 self.ability_charge = 0
+                self.ability_timer.end()
             else:
                 self.ability_charge = int((BUNNY_STATS[self.name]["ability_time"] - self.ability_timer.time_elapsed()) / BUNNY_STATS[self.name]["ability_time"] * self.TOTAL_ABILITY_CHARGE)
 
+    def respawn_reset(self):
+        self.respawn_timer.end()
+        self.health = self.TOTAL_HEALTH
+
+        respawn_x, respawn_y = random.choice(RESPAWN_POINTS[USE_MAP])
+        # collision box coordinates determines self.x, self.y and hitbox coordinates so we reset this to reset all of them
+        self.collision_box = pygame.FRect(respawn_x, respawn_y, self.org_collision_box_width, self.org_collision_box_height)
+
+        # turn back on the hitbox
+        self.hitbox.width = self.org_hitbox_width
+        self.hitbox.height = self.org_hitbox_height
 
     def change_state(self, state):
         self.state = state
@@ -172,20 +135,12 @@ class Bunny():
 
     def get_aim_vec(self):
         return self.controls["mouse_pos"] - pygame.math.Vector2(MID_X, MID_Y)
-                                                                                       # so that nature bunny can't move during grappling
+                                                                                        # so that nature bunny can't move during grappling
     def update(self, input_message, map_obj_collision_boxes, map_obj_hitboxes, enemies, moving = True):
         ''' Respawn '''
         if self.respawn_timer.is_active() and self.respawn_timer.is_over():
-            self.respawn_timer.end()
-            self.health = self.TOTAL_HEALTH
-
-            respawn_x, respawn_y = random.choice(RESPAWN_POINTS[USE_MAP])
-            # collision box coordinates determines self.x, self.y and hitbox coordinates so we reset this to reset all of them
-            self.collision_box = pygame.FRect(respawn_x, respawn_y, self.org_collision_box_width, self.org_collision_box_height)
-
-            # turn on back the hitbox
-            self.hitbox.width = self.org_hitbox_width
-            self.hitbox.height = self.org_hitbox_height
+            # reset hitbox and health
+            self.respawn_reset()
 
         # no updating needed if player is dead so we return
         if self.respawn_timer.is_active():
@@ -786,6 +741,10 @@ class AngelBunny(Bunny):
     def hand_run_to_idle(self):
         return self.state == self.idle_state
 
+    def respawn_reset(self):
+        super().respawn_reset()
+        self.orb_radius = 0 # reset orb radius
+
     def update(self, inputs, map_obj_collision_boxes, map_obj_hitboxes, enemies):
         super().update(inputs, map_obj_collision_boxes, map_obj_hitboxes, enemies)
 
@@ -915,22 +874,13 @@ class AngelBunny(Bunny):
         self.update_timed_ability()
 
     def get_server_send_message(self):
-        # print(self.ability_target_x, self.ability_target_y)
-
         s = super().get_server_send_message()
+
         #      (type of hand animation)   (frame)                      (orb position)                    (orb radius)              (beam position)
         s += f",{self.hand_prefix},{self.hand_frame_index},{int(self.orb_pos.x)},{int(self.orb_pos.y)},{self.orb_radius},{int(self.ability_target_x)},{int(self.ability_target_y)}"
 
         return s
 
-    # def display(self, screen, offset_x, offset_y):
-    #     display_x, display_y = self.get_display_coords(offset_x, offset_y)
-    #
-    #     # display body
-    #     super().display(screen, offset_x, offset_y)
-    #
-    #     # display hand
-    #     self.hand_layer.display(screen, display_x, display_y)
 
 class ShadowBunny(Bunny):
     def __init__(self, team):
@@ -944,7 +894,6 @@ class ShadowBunny(Bunny):
 
         ''' Ability '''
         self.visible = True # bunny is not visible if in shadow realm AND not attacking
-        # self.shadow_realm_timer = LimitTimer(BUNNY_STATS[self.name]["ability_time"])
 
         self.init_ability_timer()
 
@@ -994,13 +943,16 @@ class ShadowBunny(Bunny):
 
         # if ability is currently in use
         if self.ability_timer.is_active():
-            # ending ability if time is over
-            if self.ability_timer.is_over():
-                self.ability_timer.end()
-                self.visible = True
-
             # updating visibility
             self.visible = self.playing_sword_animation
+        else:
+            self.visible = True
+            #
+            # # ending ability if time is over
+            # if self.ability_timer.is_over():
+            #     self.ability_timer.end()
+            #     self.visible = True
+
 
 
     def get_server_send_message(self):

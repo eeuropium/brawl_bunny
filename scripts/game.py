@@ -46,9 +46,12 @@ class Game():
 
     def run_game(self):
 
+        # order of the gamestates being run
+        
         while True:
-            menu = Menu(self)
-            menu.run_state()
+            if not TESTING: # only run menu state if testing
+                menu = Menu(self)
+                menu.run_state()
 
             matchmaking = MatchMaking(self)
             matchmaking.run_state()

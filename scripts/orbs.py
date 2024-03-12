@@ -107,14 +107,3 @@ def rot_z_matrix(angle):
     [math.sin(angle), math.cos(angle), 0],
     [0, 0, 1]
     ])
-
-
-    # # only increase the rotation angles if the A key is pressed
-    # if (keys[pygame.K_a]):
-    #     orb1.rotate()
-    #
-    # orb1.apply_transformations()
-    #
-    # orb1.draw_points(screen)
-    #
-    # # orb1.display_points_index(screen)

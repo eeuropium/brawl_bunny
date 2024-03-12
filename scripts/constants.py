@@ -7,6 +7,14 @@ import socket
 
 pygame.init()
 
+# for developer use. If the developer is currently testing the code.
+TESTING = True
+# true means testing. Feature includes
+# - no menu screen state
+# - mac address is replaced by a random number generated (so can test on same computer)
+# - auto character selection
+
+
 ''' FPS '''
 FPS = 60 # this is the maximum FPS
 
@@ -14,7 +22,7 @@ FPS = 60 # this is the maximum FPS
 DISPLAY_WIDTH = 1280
 DISPLAY_HEIGHT = 720
 
-SCALE_RATIO = 20
+SCALE_RATIO = 20 # original is 20
 WIDTH = 16 * SCALE_RATIO # 16 : 9 scaled by SCALE_RATIO
 HEIGHT = 9 * SCALE_RATIO
 
@@ -67,14 +75,15 @@ FONT_10 = pygame.font.Font("data/cooper_black.ttf", 10)
 ''' Networking '''
 PORT = 9991
 
-hostname = socket.gethostname()
-server_ip = socket.gethostbyname(hostname)
+if TESTING:
+    # get IP address of computer wifi
+    hostname = socket.gethostname()
+    server_ip = socket.gethostbyname(hostname)
 
-SERVER_IP = server_ip
-
-# for actual testing on multipler computers
-SERVER_IP = "10.80.5.134"
-
+    SERVER_IP = server_ip
+else:
+    # for actual testing on multipler computers
+    SERVER_IP = "10.80.5.134"
 
 # networking prefixes
 
@@ -82,6 +91,7 @@ def reverse_map(map):
     return {v: k for k, v in map.items()}
 
 STATE_PREFIX_MAP = {"Menu":               "Z", # doesn't matter since does not require server
+                    "Instruction":        "Z", # doesn't matter since does not require server
                     "MatchMaking" :       "M",
                     "CharacterSelection": "C",
                     "Gameplay":           "G",
@@ -186,7 +196,6 @@ MATCH_END_WAIT_TIME = 3
 # number of seconds to wait before exit button appears
 EXIT_BUTTON_WAIT_TIME = 2
 
-# network inputs for gameplay gamestate
 
 # TBD names
 # good bunnies:

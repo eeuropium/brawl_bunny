@@ -3,8 +3,6 @@
 const int WIDTH = 320, HEIGHT = 180;
 const int MAX_SPHERES = 20;
 
-const int MAX_FACES = 20, MAX_POINTS_PER_FACE = 48;
-
 uniform sampler2D frame_texture;
 uniform float time;
 uniform bool use_shadow_realm_shader;
@@ -13,10 +11,6 @@ uniform vec3 orbs_data[MAX_SPHERES];
 uniform vec3 light_orb;
 uniform vec2 light_beam_start;
 uniform vec2 light_beam_end;
-
-// uniform vec2 [MAX_FACES][MAX_POINTS_PER_FACE] crack_faces;
-// uniform vec2 crack_faces[MAX_FACES * MAX_POINTS_PER_FACE];
-// my version of GLSL used does not support multidimensional arrays so a 1D array has to be used
 
 in vec2 uvs; // x, y coordinate of current pixel - coordinates range from 0 to 1 (same as pygame - top left corner is (0, 0))
 out vec4 output_colour;
@@ -66,8 +60,8 @@ vec4 shadow_realm_shader(vec4 pixel_colour) {
 vec4 orbs_shader(vec4 pixel_colour) {
     float x_coor = uvs.x * WIDTH, y_coor = uvs.y * HEIGHT;
 
+    // view direction is middle-top of the screen
     vec2 view_dir = normalize(vec2(0.5 - uvs.x, 1.0 - uvs.y));
-    // vec2 view_dir = normalize(vec2(0.5 - uvs.x, 0.5 - uvs.y)); // Assuming the center of the screen is the view direction
 
     for (int i = 0; i < MAX_SPHERES; i++) {
         vec3 orb = orbs_data[i];
@@ -77,25 +71,20 @@ vec4 orbs_shader(vec4 pixel_colour) {
         vec2 orb_center = orb.xy;
         float orb_radius = orb.z;
 
-        // Check if the pixel is inside the orb
+        // check if the pixel is inside the orb
         if (distance(vec2(x_coor, y_coor), orb.xy) > orb.z) continue;
 
-        // Calculate the vector from the orb center to the current pixel
+        // calculate the vector from the orb center to the current pixel
         vec2 to_pixel = vec2(x_coor, y_coor) - orb_center;
 
-        // Calculate the surface normal of the orb
+        // calculate the surface normal of the orb
         vec2 surface_normal = normalize(to_pixel);
 
-        // Calculate the angle between the view direction and the surface normal
+        // calculate the angle between the view direction and the surface normal
         float fresnel = dot(view_dir, surface_normal);
 
-        // Apply Fresnel effect to the pixel color
-        // pixel_colour.rgb *= 1.0 - fresnel * 0.5; // Adjust the strength of the Fresnel effect
-
+        // apply Fresnel effect to the pixel color
         pixel_colour.rgb += 0.005 * (vec3(57, 71, 120) * (1.0 - fresnel * 0.5));
-        // pixel_colour.rgb = mix(pixel_colour.rgb, vec3(57, 71, 120), 0.1);
-
-        // pixel_colour = mix(pixel_colour, vec4(57, 71, 120, 255),fresnel * 0.5); // Adjust the strength and exponent of the Fresnel effect
 
         return pixel_colour;
     }
@@ -113,9 +102,7 @@ vec4 light_orb_shader(vec4 pixel_colour) {
     // distance from pixel to center of the light orb
     float dist = distance(coor, light_orb.xy);
 
-    // seeing the radius
-    // if (dist < light_orb.z) return vec4(0, 1, 0, 1);
-
+    // add glow value to pixel colour
     return pixel_colour + 0.05 * light_orb.z / length(0.05 * dist);
 }
 
@@ -125,14 +112,14 @@ float shortest_distance_to_line_segment(vec2 point, vec2 segment_start, vec2 seg
     float segment_length = length(segment);
     vec2 segment_dir = segment / segment_length;
 
-    // Project the point onto the line segment
+    // project the point onto the line segment
     float t = dot(point - segment_start, segment_dir);
     t = clamp(t, 0.0, segment_length);
 
-    // Calculate the closest point on the line segment
+    // calculate the closest point on the line segment
     vec2 closest_point = segment_start + t * segment_dir;
 
-    // Calculate the distance between the point and the closest point on the line segment
+    // calculate the distance between the point and the closest point on the line segment
     float distance = length(point - closest_point);
 
     return distance;
@@ -145,11 +132,10 @@ vec4 light_beam_shader(vec4 pixel_colour) {
     // no light beam currently
     if (light_beam_start == vec2(-1, -1) && light_beam_end == vec2(-1, -1)) return pixel_colour;
 
-    // drawing start and end points
-    // if (distance(coor, light_beam_start) < 5) return vec4(0, 1, 0, 1);
-    // if (distance(coor, light_beam_end) < 5) return vec4(0, 0, 1, 1);
-
+    // get distance from point to line
     float dist_to_line = shortest_distance_to_line_segment(coor, light_beam_start, light_beam_end);
+
+    // calculate the glow value
     float glow = 0.05 / length(0.05 * dist_to_line);
 
     // pixel is part of the light beam
@@ -172,44 +158,8 @@ vec4 light_beam_shader(vec4 pixel_colour) {
     }
 
     return pixel_colour + glow;
-
 }
 
-// source: https://observablehq.com/@tmcw/understanding-point-in-polygon
-// bool point_in_polygon(vec2 point) {
-//     bool in_any_face = false;
-//
-//     float x = point.x, y = point.y;
-//
-//     for (int i = 0; i < MAX_FACES * MAX_POINTS_PER_FACE; i += MAX_POINTS_PER_FACE) {
-//         bool inside = false;
-//
-//         for (int j = 1; j < MAX_POINTS_PER_FACE; j++) {
-//             float x1 = crack_faces[i * MAX_POINTS_PER_FACE + j - 1].x, y1 = crack_faces[i * MAX_POINTS_PER_FACE + j - 1].y; // start point of line segment
-//             float x2 = crack_faces[i * MAX_POINTS_PER_FACE + j].x, y2 = crack_faces[i * MAX_POINTS_PER_FACE + j].y; // end point of line segment
-//
-//             bool intersect = ((y1 > y) != (y2 > y)) && (x < (x2 - x1) * (y - y1) / (y2 - y1) + x1);
-//
-//             if (intersect) inside = !inside;
-//         }
-//
-//         if (inside) {
-//             in_any_face = true;
-//             break;
-//         }
-//     }
-//
-//     return in_any_face;
-// }
-//
-// vec4 crack_shader(vec4 pixel_colour) {
-//     // calculate coordinates in the game using uvs
-//     vec2 coor = vec2(uvs.x * WIDTH, uvs.y * HEIGHT);
-//
-//     if (point_in_polygon(coor)) return vec4(1.0, 0.0, 0.0, 1.0);
-//     return pixel_colour;
-// }
-//
 void main() {
     vec4 pixel_colour = texture(frame_texture, uvs); // RBGA colour values range from 0 to 1, not 0 to 255
     output_colour = pixel_colour;
@@ -227,12 +177,6 @@ void main() {
 
     // light beam shader
     output_colour = light_beam_shader(output_colour);
-
-    // crack faces shader
-    // output_colour = crack_shader(output_colour);
-
-    // vec2 sample_pos = vec2(uvs.x + sin(uvs.y * 10 + time * 0.01) * 0.1, uvs.y);
-    // f_color = vec4(texture(tex, sample_pos).rg, texture(tex, sample_pos).b * 1.5, 1.0);
 }
 
 // 378545

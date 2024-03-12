@@ -28,13 +28,8 @@ class Particle():
 
         self.radius -= self.decay_rate
 
-    # only for out of screen
     def should_remove(self):
-        return (self.radius < 0 or
-                self.x < -self.diameter or # checking for out of bounds
-                self.x > WIDTH + self.diameter or
-                self.y < -self.diameter or
-                self.y > HEIGHT + self.diameter)
+        return self.radius < 0
 
     def display(self, screen, offset_x, offset_y):
         display_coor = (int(self.x) + offset_x, int(self.y) + offset_y)
@@ -52,7 +47,7 @@ class Particles():
         for i in range(number):
             self.particles.append(Particle(
             spawn_x,
-            spawn_y,
+            spawn_y + MID_TO_FEET,
             random.randint(-30, 30), # angle
             random.randint(1, 10) / 10, # speed
             random.randint(7, 12), # radius
@@ -60,18 +55,17 @@ class Particles():
             random.choice([(125, 112, 113), (160, 147, 142), (90, 83, 83), (48, 44, 46)])
             ))
 
+    # update position and radius after decay
     def update(self):
         new_particles = []
 
         for particle in self.particles:
-            particle.update()
+            particle.update() # update all particles
 
-            if not particle.should_remove():
+            if not particle.should_remove(): # don't add particles to new particles list is it should be removed
                 new_particles.append(particle)
 
         self.particles = new_particles
 
-
-    def display(self):
-        for particle in self.particles:
-            particle.display()
+    def get_particles(self):
+        return self.particles

@@ -231,8 +231,6 @@ class Server():
         data, client_address = self.server_socket.recvfrom(1024) # receive data from client
         data = data.decode()
 
-        # print(data)
-
         # return empty string if client not in the same state as server
         if data[0] != self.state_prefix:
             return "", client_address
@@ -241,8 +239,10 @@ class Server():
         return data[1:], client_address
 
     def send(self, message, client_address):
+        # add state prefix to message
         message = self.state_prefix + message
 
+        # send message to client
         self.server_socket.sendto(message.encode(), client_address)
 
     def update_state(self, new_state):

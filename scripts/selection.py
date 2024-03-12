@@ -30,32 +30,9 @@ class Card:
 
 
     def display(self, screen):
-        # card states:
-        # - open: no players have chosen this card yet
-        # - selected: this player currently is selecting this card
-        # - locked: this card is selected by other players
-
-        # mask_points = self.mask.outline()
-        # new_points = [(x + self.card_rect.left, y + self.card_rect.top) for x, y in mask_points]
-        #
-        # # draw green outline if card is selected
-        # if self.card_state == "selected":
-        #     pygame.draw.lines(screen, (182, 213, 60), False, new_points, 3) # green outline
-        #
-        # # draw yellow outline if mouse is on the card
-        # elif self.mouse_on_card:
-        #     pygame.draw.lines(screen, (244, 179, 27), False, new_points, 3) # yellow outline
-
         # draw card and bunny
         display_center(screen, self.card_image, self.center_pos)
         display_center(screen, self.bunny_image, self.center_pos)
-
-        # draw gray mask on top if card is picked in another team
-        # if self.card_state == "locked":
-        #     self.display_mask = self.mask.to_surface()
-        #     self.display_mask = palette_swap(self.display_mask, WHITE, (48, 44, 46)) # dark grey
-        #     self.display_mask.set_alpha(180)
-        #     display_center(screen, self.display_mask, self.center_pos)
 
 class Cards:
     def __init__(self, bunny_names):
@@ -85,8 +62,9 @@ class Cards:
             if card.is_clicked(inputs["events"]):
                 select_index = index
 
-        # # testing (auto-selection)
-        # return f"{player_number}:{player_number - 1}"
+        # testing (auto-selection)
+        if TESTING:
+            return f"{player_number}:{player_number - 1}"
 
         # actual
         return f"{player_number}:{select_index}"

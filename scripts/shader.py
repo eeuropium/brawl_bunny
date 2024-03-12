@@ -72,7 +72,8 @@ class Shader():
 
         # pad the orbs_data list to make it length 20 so it can be passed into the shader program
         self.shader_data["orbs_data"].extend([(0.0, 0.0, 0.0) for i in range(20 - len(self.shader_data["orbs_data"]))])
-        assert len(self.shader_data["orbs_data"]) == 20
+        assert len(self.shader_data["orbs_data"]) == 20 # check that its length is 20
+
         self.program["orbs_data"] = self.shader_data["orbs_data"]
 
         # angel bunny light orb
@@ -82,10 +83,7 @@ class Shader():
         self.program["light_beam_start"] = self.shader_data["light_beam_start"]
         self.program["light_beam_end"] = self.shader_data["light_beam_end"]
 
-        # angel bunny cracking animation
-        # print(self.shader_data["crack_faces"])
-        # self.program["crack_faces"] = self.shader_data["crack_faces"]
-
+        # set rendering mode
         self.render_object.render(mode = moderngl.TRIANGLE_STRIP)
 
     def release_memory(self):

@@ -5,14 +5,6 @@ from queue import Queue # for BFS
 from scripts.managers import LimitTimer
 from scripts.constants import *
 
-
-# Colors
-WHITE = (255, 255, 255)
-RED = (255, 0, 0)
-GREEN = (0, 255, 0)
-BLUE = (0, 0, 255)
-BLACK = (0, 0, 0)
-
 class DSU:
     def __init__(self, n):
         self.p = [i for i in range(n)]
@@ -101,12 +93,12 @@ def g(x):
 def f(x):
     return x ** 3
 
+# linear interpolation from point1 to point2
 def ease(point1, point2, t_value):
     x1, y1 = point1
     x2, y2 = point2
 
     return (x1 + f(t_value) * (x2 - x1), y1 + f(t_value) * (y2 - y1))
-
 
 
 class Crack():
@@ -124,14 +116,17 @@ class Crack():
         self.x, self.y = 0, 0
 
 
-    # if clicked, start
+    # if mouse is clicked, this function is called in the gamestate loop
     def start(self, x, y, orb_radius):
-        if not self.timer.is_active():
+        if not self.timer.is_active(): # start the timer
             self.timer.start()
 
-        self.faces = self.get_graph(orb_radius)
+        self.faces = self.get_graph(orb_radius) # get new randomly generated faces
 
         self.x, self.y = x, y
+
+    def get_transparency_value(self):
+        return 255 * (1 - self.timer.get_t_value())
 
     def get_graph(self, radius):
         # RADIUS = 100
@@ -146,7 +141,7 @@ class Crack():
         all_edges = []
 
         # random points inside circle
-        # the - 0.25 * RADIUS ensures that the graph is planar (no intersections)
+        # the - 0.25 * RADIUS causes the points to generate near the center, creating a more visually appealing effect
         nodes = [Node("polar", random.uniform(0, 360), random.uniform(0, RADIUS - 0.25 * RADIUS), i) for i in range(POINTS_INSIDE)]
 
         RANDOM_DEVIATION = 5
@@ -222,14 +217,17 @@ class Crack():
         faces = []
 
         for start_node in nodes:
+
+            # check node has 3 neighbours (2 neighbour to other circumference nodes, 1 to non circumference node)
+            # check node is a circumference node
+            # check node has 2 neighbours which are circumference nodes
             if len(start_node.adj) == 3 and start_node.radius == RADIUS and [node.radius for node in start_node.adj].count(RADIUS) == 2:
 
                 for neighbour in start_node.adj:
                     if neighbour.radius != RADIUS:
                         start_neighbour = neighbour
-                    # elif (neighbour.index == TOTAL_POINTS and neighbour.index < end_node.index) or (neighbour.index != TOTAL_POINTS  and neighbour.index > end_node.index):
-                    #     end_node = neighbour
 
+                # finding end node that is a circumference node
                 end_node = nodes[right_pointer[start_node.index]]
                 end_path = [end_node]
 
@@ -245,46 +243,45 @@ class Crack():
                 backtrack[start_neighbour.index] = start_node.index
 
                 # BFS to find cycle
-                queue = Queue()
-                visited[start_node.index] = True
-                queue.put(start_neighbour)
+                queue = Queue() # initiate BFS queue
+                visited[start_node.index] = True # set visited of start node to be true
+                queue.put(start_neighbour) # add start neighbour to the queue
 
                 while not queue.empty():
                     u = queue.get()
+                    visited[u.index] = True
 
                     if u == end_node:
                         break
 
-                    visited[u.index] = True
-
                     for v in u.adj:
                         if not visited[v.index] and (v == end_node or v.radius != RADIUS):
                             queue.put(v)
-                            backtrack[v.index] = u.index
+                            backtrack[v.index] = u.index # set backtrack of v to u (meaning that we came to node v from node u)
+
+                # if end node cannot be reached, we don't add this face so we continue to the next iteration
+                if not visited[end_node.index]:
+                    continue
+                    # this prevents a crashing issue which was previously happening in the previous version
 
                 # backtracking to get cycle path
                 cycle_path = end_path
                 current_node_index = end_node.index
 
-                while current_node_index != start_node.index:
+                while current_node_index != start_node.index: # traces the path back to the start node
                     current_node_index = backtrack[current_node_index]
                     cycle_path.append(nodes[current_node_index])
 
                 faces.append(cycle_path)
                 # cycle_path does not have duplicate nodes eg: cycle path is represented as [1, 2, 3] instead of [1, 2, 3, 1]
+
         return faces
 
     def get_center(self):
         return (self.x, self.y)
 
     def get_faces(self):
-        # for event in pygame.event.get():
-        #     if event.type == pygame.MOUSEBUTTONDOWN:
-        #         all_edges, faces = get_graph()
-        #         animation_started = True
-        #         start_time = time.time()
-        # print(self.faces)
-
+        # only return faces if timer is active
         if self.timer.is_active():
             scale_factor = g(self.timer.get_t_value())
 
@@ -292,20 +289,17 @@ class Crack():
                 self.timer.end()
                 return []
 
-
             new_faces = []
 
             for j, face in enumerate(self.faces):
-
+                # general scale of all points
                 org_polygon_points = [node.get_scaled_pos(scale_factor) for node in face]
 
+                # get centroid of points
                 centroid_point = get_centroid(org_polygon_points)
+
+                # scale the faces towards the centroid
                 shrinked_polygon_points = [ease(point, centroid_point, scale_factor) for point in org_polygon_points]
-
-                # change the origin of the points to the center of explosion
-                # offset_points = [(x + self.x, y + self.y) for x, y in shrinked_polygon_points]
-
-                # new_faces.append(offset_points)
 
                 new_faces.append(shrinked_polygon_points) # center of explosion is (0, 0)
 
