@@ -941,18 +941,11 @@ class ShadowBunny(Bunny):
         # calculate ability charge
         self.update_timed_ability()
 
-        # if ability is currently in use
+        # updating visibility
         if self.ability_timer.is_active():
-            # updating visibility
             self.visible = self.playing_sword_animation
         else:
             self.visible = True
-            #
-            # # ending ability if time is over
-            # if self.ability_timer.is_over():
-            #     self.ability_timer.end()
-            #     self.visible = True
-
 
 
     def get_server_send_message(self):

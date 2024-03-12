@@ -8,12 +8,11 @@ import socket
 pygame.init()
 
 # for developer use. If the developer is currently testing the code.
-TESTING = True
+TESTING = False
 # true means testing. Feature includes
 # - no menu screen state
 # - mac address is replaced by a random number generated (so can test on same computer)
 # - auto character selection
-
 
 ''' FPS '''
 FPS = 60 # this is the maximum FPS
@@ -195,40 +194,3 @@ MATCH_END_WAIT_TIME = 3
 
 # number of seconds to wait before exit button appears
 EXIT_BUTTON_WAIT_TIME = 2
-
-
-# TBD names
-# good bunnies:
-# orb_bunny - Eunova
-# nature_bunny - Quillia
-# angel_bunny - Areisa / Risa
-# shadow_bunny - Shadowstrike
-
-# bad bunnies:
-# hex_bunny - ?
-# snow_bunny - ?
-# fist_bunny - Bangtan
-# tech_bunny- Technovrak
-
-'''
-Time Bunny - Chrona:
-
-Abilities:
-Temporal Rift: Chrona creates rifts in time that slow down players and their projectiles, making them easier targets.
-Time Warp Dash: She can dash through time to quickly reposition herself or dodge attacks, leaving behind afterimages.
-Temporal Paradox: Chrona can reverse time for herself, healing back to a previous state and nullifying any damage taken in the last few seconds.
-
-Gravity Bunny - Gravita:
-
-Abilities:
-Gravitational Pull: Gravita can manipulate gravity to pull players towards her, disrupting their movement and positioning.
-Singularity Burst: She creates miniature black holes that suck players and objects into their center, causing damage and chaos.
-Anti-Gravity Field: Gravita generates a field that reduces the weight of players within, allowing them to jump higher but making them more vulnerable to attacks.
-
-Sound Bunny - Echoa:
-
-Abilities:
-Sonic Wave: Echoa emits powerful sound waves that knock back players and break objects in their path.
-Disorienting Echoes: She creates echoes that confuse and disorient players, reversing their controls temporarily.
-Harmonic Resonance: Echoa can heal herself and her allies by harmonizing with sound waves, making her a supportive but tricky adversary.
-'''
