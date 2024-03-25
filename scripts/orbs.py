@@ -70,11 +70,6 @@ class Orbs():
 
         return s[:-1]
 
-    def draw_points(self, screen):
-        # draw the points (vertices) onto the screen
-        for x, y, radius in self.points_2d:
-            pygame.draw.circle(screen, BLACK, (x, y), radius)
-
     # shows the index of each point
     def display_points_index(self, screen):
         for index in range(len(self.points_2d)):

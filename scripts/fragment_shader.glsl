@@ -71,6 +71,10 @@ vec4 orbs_shader(vec4 pixel_colour) {
         vec2 orb_center = orb.xy;
         float orb_radius = orb.z;
 
+        // the below code uses the fresnel effect
+        // the calculations / code I wrote is modified from https://www.ronja-tutorials.com/post/012-fresnel/
+        // ------ start of fresnel ------
+
         // check if the pixel is inside the orb
         if (distance(vec2(x_coor, y_coor), orb.xy) > orb.z) continue;
 
@@ -85,6 +89,7 @@ vec4 orbs_shader(vec4 pixel_colour) {
 
         // apply Fresnel effect to the pixel color
         pixel_colour.rgb += 0.005 * (vec3(57, 71, 120) * (1.0 - fresnel * 0.5));
+        // ------ end of fresnel ------
 
         return pixel_colour;
     }
@@ -146,9 +151,7 @@ vec4 light_beam_shader(vec4 pixel_colour) {
         float dist = distance(coor, light_beam_end);
 
         // 0.5 * sin(val) + 0.5 shifts the sin value to be between 0 and 1
-        // vec3 beam_colour = vec3(mix(colour1, colour2, (0.5 * sin(0.3 * dist + 25 * time) + 0.5)));
         vec4 beam_colour = vec4(mix(colour1, colour2, (0.5 * sin(0.3 * dist + 40 * time) + 0.5)), 1.0);
-
         // for closer peaks, increase coefficient of dist
         // for faster movement of peak, increase coefficient of time
 
@@ -178,5 +181,3 @@ void main() {
     // light beam shader
     output_colour = light_beam_shader(output_colour);
 }
-
-// 378545

@@ -15,7 +15,7 @@ class Client():
         # init default message
         self.message = ""
 
-        if TESTING:
+        if TESTING or LOCAL_SERVER:
             self.mac_address = random.randint(0, int(1e6)) # fake mac address as a random integer
              # 1e6 is a float and some older python versions cannot do the randrange on a float so we convert it to int
         else:

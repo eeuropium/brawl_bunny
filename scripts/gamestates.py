@@ -232,6 +232,8 @@ class CharacterSelection(GameState):
 
         self.cards = Cards(["orb_bunny", "nature_bunny", "angel_bunny", "shadow_bunny"])
 
+        self.choose_text = Text("FONT_10", (122, 68, 74), "click to choose character", (MID_X, 30))
+
     def process(self):
 
         # send message to server
@@ -248,10 +250,14 @@ class CharacterSelection(GameState):
             self.run = False
 
         ''' display '''
+        # display cards
         self.cards.display(self.screen)
 
-        # mouse debug
-        pygame.draw.circle(self.screen, WHITE, self.inputs["mouse_pos"], 2)
+        # display text
+        self.choose_text.display(self.screen)
+
+        # mouse debug - draws position of cursor
+        # pygame.draw.circle(self.screen, WHITE, self.inputs["mouse_pos"], 2)
 
 class Gameplay(GameState):
     def __init__(self, game):

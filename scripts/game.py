@@ -26,13 +26,18 @@ class Game():
         self.display_screen = pygame.display.set_mode(self.WINDOW_SIZE, self.display_flags)
         # display screen - mathces user device display size
 
-        # SCALE_RATIO = 20
         self.screen = pygame.Surface((WIDTH, HEIGHT)) # 320, 180
 
         # clock
         self.clock = pygame.time.Clock()
 
-        pygame.display.set_caption("NEA prototype")
+        # set title
+        pygame.display.set_caption("Brawl Bunny")
+
+        # set icon image
+        icon_image = load_image("icon/icon.png")
+        icon_image = pygame.transform.scale_by(icon_image, 10) # scale icon image to reduce bilinear interpolation effects
+        pygame.display.set_icon(icon_image)
 
         # client
         self.client = Client()
@@ -47,7 +52,6 @@ class Game():
     def run_game(self):
 
         # order of the gamestates being run
-        
         while True:
             if not TESTING: # only run menu state if testing
                 menu = Menu(self)

@@ -918,7 +918,6 @@ class ShadowBunny(Bunny):
             if self.sword_animation.ended():
                 self.playing_sword_animation = False
 
-
         ''' Dealing Damage '''
 
         if self.sword_index == 4: # damaging frame (frame number 4) Only can deal damage on this frame

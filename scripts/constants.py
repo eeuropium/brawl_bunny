@@ -14,6 +14,8 @@ TESTING = False
 # - mac address is replaced by a random number generated (so can test on same computer)
 # - auto character selection
 
+LOCAL_SERVER = True # testing full gameplay on my own computer
+
 ''' FPS '''
 FPS = 60 # this is the maximum FPS
 
@@ -74,7 +76,7 @@ FONT_10 = pygame.font.Font("data/cooper_black.ttf", 10)
 ''' Networking '''
 PORT = 9991
 
-if TESTING:
+if TESTING or LOCAL_SERVER:
     # get IP address of computer wifi
     hostname = socket.gethostname()
     server_ip = socket.gethostbyname(hostname)
@@ -83,6 +85,7 @@ if TESTING:
 else:
     # for actual testing on multipler computers
     SERVER_IP = "10.80.5.134"
+
 
 # networking prefixes
 
