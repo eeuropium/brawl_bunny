@@ -15,8 +15,8 @@ In **Multiplayer Bunny Brawl**, players join teams (Red or Blue), select their c
 - **Game Engine**: Pygame
 - **Networking**: UDP (sockets)
 - **Graphics**:
-  - Procedural VFX animation (eg., orbs, vines, light beams)
-  - Shaders (Fresnel effects, glow, laser)
+  - Procedural VFX animation (eg: orbs, vines, light beams)
+  - Shaders (fresnel effects, glow, laser)
 - **Data Structures & Math**:
   - Bézier curves (for vines)
   - Roots of unity, 3D Matrix Transformation and Projection (for orbs)
