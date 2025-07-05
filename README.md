@@ -61,15 +61,24 @@ In **Multiplayer Bunny Brawl**, players join teams (Red or Blue), select their c
 - **Attack**: Short-range vine punch with easing animation
 - **Super**: Grappling vine hook that pulls the player
 
+![nature_bunny_splash_signed](https://github.com/user-attachments/assets/90c68f5d-1615-4403-b6d4-eeb1c3caede0)
+
 ### ✨ Angel Bunny
 - **Attack**: Chargeable light orb that glows and cracks on impact
 - **Crack Animation**: Procedural crack using MST and chordless cycles
 - **Super**: Laser beam that pierces obstacles using shader effects
 
+![angel_bunny_splash_signed](https://github.com/user-attachments/assets/a0b02121-f784-40a1-af70-ea49d3a892ec)
+
+
 ### 🗡️ Shadow Bunny
 - **Attack**: Melee sword strike 
 - **Super**: Enters shadow realm (become invisible) with particle effects
+
+![shadow_bunny_splash_signed](https://github.com/user-attachments/assets/bc2e9038-0152-4c86-8fc3-a6409819cebe)
+
 ---
+
 
 ## 🌐 Multiplayer System
 
