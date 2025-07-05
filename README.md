@@ -54,6 +54,8 @@ In **Multiplayer Bunny Brawl**, players join teams (Red or Blue), select their c
 - **Attack**: Fires an orb towards mouse position
 - **Super**: Fires all 5 orbs in a star pattern using roots of unity
 
+![orb_bunny_splash_signed](https://github.com/user-attachments/assets/256d3c30-55f8-4aaf-863a-60d88b49b8a6)
+
 ### 🌿 Nature Bunny
 - **Base**: Procedural vines follow the mouse using Bézier curves
 - **Attack**: Short-range vine punch with easing animation
