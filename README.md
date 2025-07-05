@@ -1,4 +1,4 @@
-# Brawl Bunny
+# Brawl Bunny 🐰
 
 A fast-paced 4-player multiplayer action game built with Python and Pygame, featuring four unique bunny characters with custom abilities and team-based combat.
 
@@ -66,7 +66,7 @@ In **Multiplayer Bunny Brawl**, players join teams (Red or Blue), select their c
 
 ### 🗡️ Shadow Bunny
 - **Attack**: Melee sword strike 
-- **Super**: Enters shadow realm (invisible) with particle effects
+- **Super**: Enters shadow realm (become invisible) with particle effects
 ---
 
 ## 🌐 Multiplayer System
