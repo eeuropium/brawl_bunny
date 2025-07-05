@@ -76,6 +76,7 @@ https://github.com/user-attachments/assets/3270c65a-3f26-41d6-a1f5-0564c6502b60
 
 ![angel_bunny_splash_signed](https://github.com/user-attachments/assets/a0b02121-f784-40a1-af70-ea49d3a892ec)
 
+https://github.com/user-attachments/assets/9927e284-4828-4c4c-9909-743b1b1c7a43
 
 ### 🗡️ Shadow Bunny
 - **Attack**: Melee sword strike 
