@@ -56,6 +56,9 @@ In **Multiplayer Bunny Brawl**, players join teams (Red or Blue), select their c
 
 ![orb_bunny_splash_signed](https://github.com/user-attachments/assets/256d3c30-55f8-4aaf-863a-60d88b49b8a6)
 
+https://github.com/user-attachments/assets/fcedc8f3-1cea-4fc1-a3a0-a0396833c4d1
+
+
 ### 🌿 Nature Bunny
 - **Base**: Procedural vines follow the mouse using Bézier curves
 - **Attack**: Short-range vine punch with easing animation
