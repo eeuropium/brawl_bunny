@@ -66,6 +66,9 @@ https://github.com/user-attachments/assets/fcedc8f3-1cea-4fc1-a3a0-a0396833c4d1
 
 ![nature_bunny_splash_signed](https://github.com/user-attachments/assets/90c68f5d-1615-4403-b6d4-eeb1c3caede0)
 
+https://github.com/user-attachments/assets/3270c65a-3f26-41d6-a1f5-0564c6502b60
+
+
 ### ✨ Angel Bunny
 - **Attack**: Chargeable light orb that glows and cracks on impact
 - **Crack Animation**: Procedural crack using MST and chordless cycles
