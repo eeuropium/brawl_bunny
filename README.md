@@ -6,7 +6,7 @@ A fast-paced 4-player multiplayer action game built with Python and Pygame, feat
 
 ## 🎮 Game Overview
 
-In **Multiplayer Bunny Brawl**, players join teams (Red or Blue), select their characters, and compete to achieve the highest number of kills before time runs out. The game includes rich procedural animations, shaders, and real-time multiplayer features.
+In Brawl Bunny, players join teams (Red or Blue), select their characters, and compete to achieve the highest number of kills before time runs out. The game includes rich procedural animations, shaders, and real-time multiplayer features.
 
 ---
 ## 🧰 Technologies Used
