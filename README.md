@@ -37,12 +37,15 @@ In Brawl Bunny, players join teams (Red or Blue), select their characters, and c
 ## 🧩 Game States
 
 **1. Menu**
+<img width="1274" height="712" alt="Menu" src="https://github.com/user-attachments/assets/a3596c27-c6b1-4847-bdb5-14923ec6537b" />
 
 **2. Instruction**
+<img width="1267" height="711" alt="Instruction" src="https://github.com/user-attachments/assets/b045e0dd-3e5f-43a1-8ca2-e930b29c5b35" />
 
 **3. Matchmaking**
 
 **4. Character Selection**
+<img width="1265" height="705" alt="Selection" src="https://github.com/user-attachments/assets/0efc180a-aa02-4b5e-9f89-ef798eb8afdd" />
 
 **5. Gameplay**
 
