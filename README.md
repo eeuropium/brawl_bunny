@@ -36,12 +36,12 @@ In Brawl Bunny, players join teams (Red or Blue), select their characters, and c
 
 ## 🧩 Game States
 
-### 1. Menu
-### 2. Instruction
-### 3. Matchmaking
-### 4. Character Selection
-### 5. Gameplay
-### 6. Endscreen
+**1. Menu**
+**2. Instruction**
+**3. Matchmaking**
+**4. Character Selection**
+**5. Gameplay**
+**6. Endscreen**
 ---
 
 ## 🧙‍♂️ Characters
