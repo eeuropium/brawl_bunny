@@ -50,6 +50,7 @@ In Brawl Bunny, players join teams (Red or Blue), select their characters, and c
 **5. Gameplay**
 
 **6. Endscreen**
+
 ---
 
 ## 🧙‍♂️ Characters
