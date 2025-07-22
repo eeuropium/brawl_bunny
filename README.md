@@ -1,4 +1,4 @@
-# Brawl Bunny 🐰
+# Brawl Bunny
 
 A fast-paced 4-player multiplayer action game built with Python and Pygame, featuring four unique bunny characters with custom abilities and team-based combat.
 
